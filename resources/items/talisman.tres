@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "talisman"
+item_type = 3
+identified_name = "살귀 부적"
+unidentified_name = "낡은 부적"
+description = "알 수 없는 글씨가 적힌 부적."
+identified_description = "살귀 부적. 가까운 적에게 피해 10을 준다."
+stackable = true
+is_cursed = false
+value_a = 10
+value_b = 0
+gold_value = 10

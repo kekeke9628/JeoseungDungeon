@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/generation/MonsterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 22
+attack_min = 3
+attack_max = 7
+defense = 1
+accuracy = 90
+evasion = 10
+
+[resource]
+script = ExtResource("1")
+id = "jeoseung_saja"
+display_name = "저승사자"
+description = "명부를 들고 영혼을 데리러 오는 검은 도포의 사자."
+stats = SubResource("Resource_stats")
+ai_type = 2
+xp_reward = 22
+min_floor = 6
+max_floor = 7
+color = Color(0.1, 0.1, 0.1, 1)
+glyph = "사"
+is_boss = false
+loot_item_ids = Array[String](["talisman", "ledger_fragment", "soul_armor"])
+loot_chance = 0.5
+detect_radius = 7

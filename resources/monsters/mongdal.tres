@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/generation/MonsterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 8
+attack_min = 1
+attack_max = 3
+defense = 0
+accuracy = 75
+evasion = 3
+
+[resource]
+script = ExtResource("1")
+id = "mongdal"
+display_name = "몽달귀신"
+description = "총각으로 죽어 저승에 못 간 귀신."
+stats = SubResource("Resource_stats")
+ai_type = 0
+xp_reward = 4
+min_floor = 1
+max_floor = 3
+color = Color(0.75, 0.75, 0.85, 1)
+glyph = "몽"
+is_boss = false
+loot_item_ids = Array[String](["flower_wine", "hemp_garment"])
+loot_chance = 0.25
+detect_radius = 4

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "dokkaebi_club"
+item_type = 0
+identified_name = "도깨비 방망이"
+unidentified_name = "울퉁불퉁한 몽둥이"
+description = "묵직한 몽둥이. 어딘가 기묘한 기운이 느껴진다."
+identified_description = "도깨비 방망이. 공격력 +5."
+stackable = false
+is_cursed = false
+value_a = 5
+value_b = 0
+gold_value = 10

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/generation/MonsterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 60
+attack_min = 5
+attack_max = 8
+defense = 2
+accuracy = 95
+evasion = 8
+
+[resource]
+script = ExtResource("1")
+id = "yeomra"
+display_name = "염라대왕"
+description = "저승을 다스리는 대왕. 살아 있는 자를 결코 그냥 보내지 않는다."
+stats = SubResource("Resource_stats")
+ai_type = 1
+xp_reward = 100
+min_floor = 8
+max_floor = 8
+color = Color(0.7, 0.1, 0.1, 1)
+glyph = "염"
+is_boss = true
+loot_item_ids = Array[String]([])
+loot_chance = 0.0
+detect_radius = 20

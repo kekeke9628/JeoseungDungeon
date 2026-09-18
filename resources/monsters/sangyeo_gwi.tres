@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/generation/MonsterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 28
+attack_min = 3
+attack_max = 5
+defense = 2
+accuracy = 80
+evasion = 2
+
+[resource]
+script = ExtResource("1")
+id = "sangyeo_gwi"
+display_name = "상여귀"
+description = "상여를 지고 다니는 무거운 원혼."
+stats = SubResource("Resource_stats")
+ai_type = 1
+xp_reward = 16
+min_floor = 5
+max_floor = 7
+color = Color(0.55, 0.45, 0.35, 1)
+glyph = "상"
+is_boss = false
+loot_item_ids = Array[String](["hemp_garment", "soul_armor", "ledger_fragment"])
+loot_chance = 0.4
+detect_radius = 5

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "hemp_garment"
+item_type = 1
+identified_name = "삼베 수의"
+unidentified_name = "거친 옷"
+description = "거친 삼베로 지은 옷."
+identified_description = "삼베 수의. 방어력 +1."
+stackable = false
+is_cursed = false
+value_a = 0
+value_b = 1
+gold_value = 10

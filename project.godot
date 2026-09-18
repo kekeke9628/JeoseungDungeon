@@ -1,0 +1,35 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are meant to be edited using the UI and not by hand.
+
+config_version=5
+
+[application]
+
+config/name="Jeoseung Dungeon"
+config/description="한국 설화 기반 턴제 로그라이크 던전 크롤러"
+run/main_scene="res://scenes/Game.tscn"
+config/features=PackedStringArray("4.3", "Mobile")
+
+[autoload]
+
+Constants="*res://scripts/core/Constants.gd"
+MessageBus="*res://autoloads/MessageBus.gd"
+GameState="*res://autoloads/GameState.gd"
+ItemDatabase="*res://autoloads/ItemDatabase.gd"
+MonsterDatabase="*res://autoloads/MonsterDatabase.gd"
+DungeonState="*res://autoloads/DungeonState.gd"
+TurnManager="*res://autoloads/TurnManager.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/handheld/orientation="portrait"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="mobile"
+environment/defaults/default_clear_color=Color(0.03, 0.02, 0.05, 1)

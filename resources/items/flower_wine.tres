@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "flower_wine"
+item_type = 2
+identified_name = "저승꽃술"
+unidentified_name = "이상한 술"
+description = "붉은 꽃잎이 떠 있는 술."
+identified_description = "저승꽃술. 마시면 체력 15을 회복한다."
+stackable = true
+is_cursed = false
+value_a = 15
+value_b = 0
+gold_value = 10

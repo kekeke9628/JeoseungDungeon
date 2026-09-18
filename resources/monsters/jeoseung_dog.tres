@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/generation/MonsterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 12
+attack_min = 2
+attack_max = 5
+defense = 0
+accuracy = 90
+evasion = 15
+
+[resource]
+script = ExtResource("1")
+id = "jeoseung_dog"
+display_name = "저승개"
+description = "저승 길목을 지키는 검은 개."
+stats = SubResource("Resource_stats")
+ai_type = 1
+xp_reward = 8
+min_floor = 2
+max_floor = 5
+color = Color(0.25, 0.25, 0.3, 1)
+glyph = "견"
+is_boss = false
+loot_item_ids = Array[String](["talisman"])
+loot_chance = 0.2
+detect_radius = 7
