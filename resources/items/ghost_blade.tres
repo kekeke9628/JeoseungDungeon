@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1")
-id = "spirit_dagger"
+id = "ghost_blade"
 item_type = 0
-identified_name = "신단검"
-unidentified_name = "낡은 단검"
-description = "무당이 쓰던 것 같은 낡은 단검."
-identified_description = "신기가 깃든 단검. 공격력 +2."
+identified_name = "귀검"
+unidentified_name = "서늘한 대검"
+description = "쥐기만 해도 손이 시린 대검."
+identified_description = "귀검. 공격력 +10."
 stackable = false
 is_cursed = false
-min_floor = 1
-value_a = 2
+min_floor = 12
+value_a = 10
 value_b = 0
 gold_value = 10

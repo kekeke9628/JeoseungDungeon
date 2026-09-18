@@ -5,26 +5,26 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 220
-attack_min = 12
-attack_max = 18
-defense = 6
-accuracy = 98
-evasion = 10
+max_hp = 130
+attack_min = 8
+attack_max = 13
+defense = 4
+accuracy = 95
+evasion = 8
 
 [resource]
 script = ExtResource("1")
-id = "yeomra"
-display_name = "염라대왕"
-description = "저승을 다스리는 대왕. 살아 있는 자를 결코 그냥 보내지 않는다."
+id = "gangnim"
+display_name = "강림차사"
+description = "염라대왕을 대신해 산 자를 잡으러 다니는 저승차사의 우두머리."
 stats = SubResource("Resource_stats")
 ai_type = 1
-xp_reward = 500
-min_floor = 20
-max_floor = 20
-color = Color(0.7, 0.1, 0.1, 1)
-glyph = "염"
+xp_reward = 150
+min_floor = 10
+max_floor = 10
+color = Color(0.15, 0.15, 0.55, 1)
+glyph = "강"
 is_boss = true
-loot_item_ids = Array[String]([])
-loot_chance = 0.0
-detect_radius = 30
+loot_item_ids = Array[String](["elixir"])
+loot_chance = 1.0
+detect_radius = 20

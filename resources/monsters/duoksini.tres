@@ -5,26 +5,26 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 18
-attack_min = 3
-attack_max = 6
-defense = 0
-accuracy = 90
-evasion = 25
+max_hp = 44
+attack_min = 6
+attack_max = 10
+defense = 2
+accuracy = 88
+evasion = 5
 
 [resource]
 script = ExtResource("1")
-id = "gumiho"
-display_name = "구미호"
-description = "꼬리 아홉 달린 요망한 여우."
+id = "duoksini"
+display_name = "두억시니"
+description = "사람을 해치는 사나운 야귀."
 stats = SubResource("Resource_stats")
-ai_type = 0
-xp_reward = 14
-min_floor = 4
-max_floor = 7
-color = Color(0.95, 0.75, 0.35, 1)
-glyph = "호"
+ai_type = 1
+xp_reward = 30
+min_floor = 9
+max_floor = 13
+color = Color(0.45, 0.2, 0.2, 1)
+glyph = "두"
 is_boss = false
-loot_item_ids = Array[String](["talisman", "soul_armor", "teleport_talisman"])
-loot_chance = 0.35
+loot_item_ids = Array[String](["diamond_armor", "immortal_wine"])
+loot_chance = 0.4
 detect_radius = 6

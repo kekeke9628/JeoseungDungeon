@@ -26,6 +26,9 @@ func end_player_turn() -> void:
 		return
 	is_processing = true
 	GameState.turn_count += 1
+	if GameState.skill_cooldown_left > 0:
+		GameState.skill_cooldown_left -= 1
+		GameState.skill_changed.emit()
 	if player != null and player.is_alive and GameState.turn_count % REGEN_INTERVAL == 0:
 		player.heal(1)
 	# Snapshot so a monster dying mid-loop (removed via unregister_monster)

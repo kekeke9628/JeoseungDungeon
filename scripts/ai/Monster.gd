@@ -28,7 +28,7 @@ func take_ai_turn() -> void:
 			else:
 				_move_random()
 		MonsterData.AIType.RANGED:
-			if dist <= 3 and dist >= 1:
+			if dist <= 3 and DungeonState.has_line_of_sight(grid_pos, player_actor.grid_pos):
 				_attack(player_actor)
 			elif dist <= data.detect_radius:
 				_move_toward(player_actor.grid_pos)
@@ -54,9 +54,11 @@ func die() -> void:
 		if item:
 			DungeonState.place_item(grid_pos, item)
 			MessageBus.log_message("%s 무언가를 떨어뜨렸다." % Josa.i_ga(display_name))
-	if data.is_boss:
-		MessageBus.log_message("염라대왕을 물리쳤다! 저승을 탈출했다!")
+	if data.is_boss and data.max_floor >= Constants.MAX_FLOOR:
+		MessageBus.log_message("%s 물리쳤다! 저승을 탈출했다!" % Josa.eul_reul(display_name))
 		GameState.game_over.emit(true)
+	elif data.is_boss:
+		MessageBus.log_message("%s 쓰러뜨렸다. 저승 더 깊은 곳으로 길이 열렸다." % Josa.eul_reul(display_name))
 	super.die()
 
 func _attack(target) -> void:

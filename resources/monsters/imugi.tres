@@ -5,26 +5,26 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 22
-attack_min = 3
-attack_max = 7
-defense = 1
-accuracy = 90
-evasion = 10
+max_hp = 60
+attack_min = 9
+attack_max = 14
+defense = 3
+accuracy = 92
+evasion = 8
 
 [resource]
 script = ExtResource("1")
-id = "jeoseung_saja"
-display_name = "저승사자"
-description = "명부를 들고 영혼을 데리러 오는 검은 도포의 사자."
+id = "imugi"
+display_name = "이무기"
+description = "용이 되지 못한 채 물속에 도사리는 큰 뱀."
 stats = SubResource("Resource_stats")
-ai_type = 2
-xp_reward = 22
-min_floor = 6
-max_floor = 9
-color = Color(0.1, 0.1, 0.1, 1)
-glyph = "사"
+ai_type = 3
+xp_reward = 55
+min_floor = 14
+max_floor = 17
+color = Color(0.2, 0.45, 0.3, 1)
+glyph = "이"
 is_boss = false
-loot_item_ids = Array[String](["talisman", "ledger_fragment", "soul_blade"])
+loot_item_ids = Array[String](["elixir", "dragon_armor", "teleport_talisman"])
 loot_chance = 0.5
-detect_radius = 7
+detect_radius = 3

@@ -5,26 +5,26 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 22
-attack_min = 3
-attack_max = 7
-defense = 1
-accuracy = 90
-evasion = 10
+max_hp = 50
+attack_min = 7
+attack_max = 12
+defense = 3
+accuracy = 92
+evasion = 8
 
 [resource]
 script = ExtResource("1")
-id = "jeoseung_saja"
-display_name = "저승사자"
-description = "명부를 들고 영혼을 데리러 오는 검은 도포의 사자."
+id = "yacha"
+display_name = "야차"
+description = "날렵하고 흉포한 저승의 야차."
 stats = SubResource("Resource_stats")
-ai_type = 2
-xp_reward = 22
-min_floor = 6
-max_floor = 9
-color = Color(0.1, 0.1, 0.1, 1)
-glyph = "사"
+ai_type = 1
+xp_reward = 38
+min_floor = 11
+max_floor = 15
+color = Color(0.3, 0.55, 0.35, 1)
+glyph = "야"
 is_boss = false
-loot_item_ids = Array[String](["talisman", "ledger_fragment", "soul_blade"])
-loot_chance = 0.5
+loot_item_ids = Array[String](["elixir", "diamond_armor", "ledger_fragment"])
+loot_chance = 0.45
 detect_radius = 7

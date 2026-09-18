@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1")
-id = "ledger_fragment"
+id = "clairvoyance_talisman"
 item_type = 3
-identified_name = "명부 조각"
-unidentified_name = "찢어진 종이"
-description = "이름이 적힌 찢어진 종이."
-identified_description = "명부 조각. 정체를 모르는 물건 하나를 감정한다."
+identified_name = "천리안 부적"
+unidentified_name = "눈이 그려진 부적"
+description = "눈동자가 그려진 부적."
+identified_description = "천리안 부적. 이 층의 지형을 모두 밝힌다."
 stackable = true
 is_cursed = false
-min_floor = 1
+min_floor = 3
 value_a = 0
 value_b = 0
 gold_value = 10

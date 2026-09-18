@@ -5,26 +5,26 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 220
-attack_min = 12
-attack_max = 18
+max_hp = 70
+attack_min = 6
+attack_max = 10
 defense = 6
-accuracy = 98
-evasion = 10
+accuracy = 85
+evasion = 2
 
 [resource]
 script = ExtResource("1")
-id = "yeomra"
-display_name = "염라대왕"
-description = "저승을 다스리는 대왕. 살아 있는 자를 결코 그냥 보내지 않는다."
+id = "bulgasari"
+display_name = "불가사리"
+description = "쇠를 먹고 자라는 단단한 괴물."
 stats = SubResource("Resource_stats")
 ai_type = 1
-xp_reward = 500
-min_floor = 20
-max_floor = 20
-color = Color(0.7, 0.1, 0.1, 1)
-glyph = "염"
-is_boss = true
-loot_item_ids = Array[String]([])
-loot_chance = 0.0
-detect_radius = 30
+xp_reward = 45
+min_floor = 12
+max_floor = 16
+color = Color(0.4, 0.4, 0.45, 1)
+glyph = "불"
+is_boss = false
+loot_item_ids = Array[String](["ghost_blade", "dragon_armor", "immortal_wine"])
+loot_chance = 0.45
+detect_radius = 5

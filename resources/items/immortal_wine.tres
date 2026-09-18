@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1")
-id = "flower_wine"
+id = "immortal_wine"
 item_type = 2
-identified_name = "저승꽃술"
-unidentified_name = "이상한 술"
-description = "붉은 꽃잎이 떠 있는 술."
-identified_description = "저승꽃술. 마시면 체력 15을 회복한다."
+identified_name = "신선주"
+unidentified_name = "향기로운 술"
+description = "맡기만 해도 취할 듯한 향기가 난다."
+identified_description = "신선주. 마시면 체력 40을 회복한다."
 stackable = true
 is_cursed = false
-min_floor = 1
-value_a = 15
+min_floor = 8
+value_a = 40
 value_b = 0
 gold_value = 10

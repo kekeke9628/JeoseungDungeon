@@ -1,10 +1,12 @@
 extends Node2D
 ## Main scene controller: builds the world and UI, spawns the player, loads
-## floors, routes input to the player, and handles game over.
+## floors, routes input to the player, and handles saving and game over.
 
-const CLASS_PATH: String = "res://resources/classes/mudang.tres"
+const CLASS_DIR: String = "res://resources/classes"
+const MENU_SCENE: String = "res://scenes/MainMenu.tscn"
 const MONSTERS_PER_FLOOR_MIN: int = 4
 const MONSTERS_PER_FLOOR_MAX: int = 6
+const BOSS_ESCORTS: int = 3
 const LOOT_PER_FLOOR_MIN: int = 4
 const LOOT_PER_FLOOR_MAX: int = 6
 const GOLD_CHANCE: float = 0.4
@@ -25,6 +27,10 @@ var _ended: bool = false
 
 func _ready() -> void:
 	randomize()
+	var continuing: bool = GameState.pending_continue
+	var save_data: Dictionary = SaveManager.load_data() if continuing else {}
+	if save_data.is_empty():
+		continuing = false
 	GameState.reset_run()
 	TurnManager.is_processing = false
 
@@ -36,12 +42,17 @@ func _ready() -> void:
 	GameState.leveled_up.connect(_on_leveled_up)
 	GameState.gold_changed.connect(hud.set_gold)
 	GameState.level_changed.connect(hud.set_level)
+	GameState.skill_changed.connect(_update_skill_button)
 	MessageBus.message_logged.connect(message_log.add_message)
 
-	_spawn_player()
-	_load_floor(1)
+	var class_id: String = str(save_data.class_id) if continuing else GameState.selected_class_id
+	_spawn_player(class_id, save_data if continuing else {})
+	var start_floor: int = int(save_data.floor) if continuing else 1
+	_load_floor(start_floor)
 	hud.set_level(GameState.player_level, GameState.player_xp, GameState.player_xp_to_next)
 	hud.set_gold(GameState.gold)
+	hud.set_hp(player.current_hp, player.stats.max_hp)
+	_update_skill_button()
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -56,17 +67,17 @@ func _build_ui() -> void:
 	hud.inventory_pressed.connect(inventory_panel.toggle)
 	dpad.direction_pressed.connect(_on_direction_pressed)
 	dpad.wait_pressed.connect(_on_wait_pressed)
+	dpad.skill_pressed.connect(_on_skill_pressed)
 	inventory_panel.item_chosen.connect(_on_item_chosen)
 	game_over_screen.restart_pressed.connect(_on_restart)
 
-func _spawn_player() -> void:
-	var class_data: CharacterClassData = load(CLASS_PATH)
+func _spawn_player(class_id: String, save_data: Dictionary) -> void:
+	var class_data: CharacterClassData = load("%s/%s.tres" % [CLASS_DIR, class_id])
 	GameState.player_class = class_data
 	player = Player.new()
 	world.add_child(player)
 	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name)
 	player.hp_changed.connect(hud.set_hp)
-	hud.set_hp(player.current_hp, player.stats.max_hp)
 
 	camera = Camera2D.new()
 	camera.offset = Vector2(0, 110)
@@ -74,13 +85,17 @@ func _spawn_player() -> void:
 	camera.position = Vector2(Constants.TILE_SIZE / 2.0, Constants.TILE_SIZE / 2.0)
 	camera.make_current()
 
+	if not save_data.is_empty():
+		SaveManager.apply(save_data, player)
+		return
 	for item_id in class_data.starting_item_ids:
 		var item: ItemData = ItemDatabase.get_item(item_id)
 		if item:
 			GameState.add_item(item)
-	var start_weapon: ItemData = ItemDatabase.get_item("spirit_dagger")
-	if start_weapon:
-		ItemEffects.use_item(start_weapon, player)
+	for item_id in class_data.starting_equip_ids:
+		var equip: ItemData = ItemDatabase.get_item(item_id)
+		if equip:
+			ItemEffects.use_item(equip, player)
 
 func _load_floor(floor_num: int) -> void:
 	if floor_node:
@@ -104,23 +119,22 @@ func _load_floor(floor_num: int) -> void:
 
 	var rooms: Array[Rect2i] = result.rooms
 	_spawn_monsters(floor_num, rooms, result.stairs_pos)
-	_spawn_loot(rooms, result.start_pos)
+	_spawn_loot(floor_num, rooms, result.start_pos)
 
 	GameState.current_floor = floor_num
 	hud.set_floor(floor_num)
 	MessageBus.log_message("저승 %d층에 발을 들였다..." % floor_num)
+	_refresh_vision()
+	SaveManager.save_run(player)
 
 func _spawn_monsters(floor_num: int, rooms: Array[Rect2i], stairs_pos: Vector2i) -> void:
-	var is_boss_floor: bool = floor_num == Constants.MAX_FLOOR
-	if is_boss_floor:
-		var boss: MonsterData = MonsterDatabase.get_boss_for_floor(floor_num)
-		if boss:
-			_spawn_monster_at(boss, stairs_pos)
-	var pool_floor: int = Constants.MAX_FLOOR - 1 if is_boss_floor else floor_num
-	var pool: Array[MonsterData] = MonsterDatabase.get_monsters_for_floor(pool_floor)
+	var boss: MonsterData = MonsterDatabase.get_boss_for_floor(floor_num)
+	if boss:
+		_spawn_monster_at(boss, stairs_pos)
+	var pool: Array[MonsterData] = MonsterDatabase.get_monsters_for_floor(floor_num - 1 if boss else floor_num)
 	if pool.is_empty():
 		return
-	var count: int = 3 if is_boss_floor else randi_range(MONSTERS_PER_FLOOR_MIN, MONSTERS_PER_FLOOR_MAX)
+	var count: int = BOSS_ESCORTS if boss else randi_range(MONSTERS_PER_FLOOR_MIN, MONSTERS_PER_FLOOR_MAX)
 	for i in range(count):
 		var room: Rect2i = rooms[randi_range(1, rooms.size() - 1)]
 		var pos: Vector2i = _random_pos_in(room)
@@ -135,9 +149,13 @@ func _spawn_monster_at(m_data: MonsterData, pos: Vector2i) -> void:
 	m.move_to_grid(pos)
 	DungeonState.set_actor_at(pos, m)
 
-func _spawn_loot(rooms: Array[Rect2i], start_pos: Vector2i) -> void:
-	var ids: Array = ItemDatabase.get_all_ids()
-	if ids.is_empty():
+func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> void:
+	var pool: Array[ItemData] = []
+	for id in ItemDatabase.get_all_ids():
+		var item: ItemData = ItemDatabase.get_item(id)
+		if item.min_floor <= floor_num:
+			pool.append(item)
+	if pool.is_empty():
 		return
 	var count: int = randi_range(LOOT_PER_FLOOR_MIN, LOOT_PER_FLOOR_MAX)
 	for i in range(count):
@@ -145,14 +163,20 @@ func _spawn_loot(rooms: Array[Rect2i], start_pos: Vector2i) -> void:
 		if pos == start_pos or DungeonState.is_stairs(pos) or DungeonState.items_at.has(pos) or DungeonState.gold_at.has(pos):
 			continue
 		if randf() < GOLD_CHANCE:
-			DungeonState.place_gold(pos, randi_range(5, 25))
+			DungeonState.place_gold(pos, randi_range(5, 25) + floor_num * 3)
 		else:
-			DungeonState.place_item(pos, ItemDatabase.get_item(ids[randi() % ids.size()]))
+			DungeonState.place_item(pos, pool[randi() % pool.size()])
 
 func _random_pos_in(room: Rect2i) -> Vector2i:
 	return Vector2i(
 		randi_range(room.position.x, room.position.x + room.size.x - 1),
 		randi_range(room.position.y, room.position.y + room.size.y - 1))
+
+func _refresh_vision() -> void:
+	DungeonState.compute_fov(player.grid_pos, Constants.VISION_RADIUS)
+	for m in TurnManager.monsters:
+		if is_instance_valid(m):
+			m.visible = DungeonState.visible_tiles.has(m.grid_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
@@ -168,6 +192,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_direction_pressed(Vector2i(1, 0))
 		KEY_SPACE:
 			_on_wait_pressed()
+		KEY_E, KEY_Q:
+			_on_skill_pressed()
 		KEY_I:
 			inventory_panel.toggle()
 
@@ -183,6 +209,18 @@ func _on_wait_pressed() -> void:
 		player.wait_turn()
 		_after_player_action()
 
+func _on_skill_pressed() -> void:
+	if not _can_act():
+		return
+	if GameState.skill_cooldown_left > 0:
+		MessageBus.log_message("아직 기술을 쓸 수 없다. (%d턴)" % GameState.skill_cooldown_left)
+		return
+	var c: CharacterClassData = GameState.player_class
+	if SkillEffects.use(c.skill_id, player):
+		GameState.skill_cooldown_left = c.skill_cooldown + 1
+		TurnManager.end_player_turn()
+		_after_player_action()
+
 func _on_item_chosen(item: ItemData) -> void:
 	if _ended or not is_instance_valid(player) or not player.is_alive:
 		return
@@ -195,6 +233,13 @@ func _after_player_action() -> void:
 		return
 	if DungeonState.is_stairs(player.grid_pos) and GameState.current_floor < Constants.MAX_FLOOR:
 		_load_floor(GameState.current_floor + 1)
+		return
+	_refresh_vision()
+
+func _update_skill_button() -> void:
+	var c: CharacterClassData = GameState.player_class
+	if c:
+		dpad.set_skill(c.skill_name, GameState.skill_cooldown_left)
 
 func _on_leveled_up(new_level: int) -> void:
 	if not is_instance_valid(player):
@@ -208,7 +253,8 @@ func _on_leveled_up(new_level: int) -> void:
 
 func _on_game_over(victory: bool) -> void:
 	_ended = true
+	SaveManager.delete_save()
 	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count)
 
 func _on_restart() -> void:
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file(MENU_SCENE)

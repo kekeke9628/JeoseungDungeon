@@ -4,4 +4,5 @@ extends Node
 const TILE_SIZE: int = 48
 const GRID_WIDTH: int = 20
 const GRID_HEIGHT: int = 28
-const MAX_FLOOR: int = 8
+const MAX_FLOOR: int = 20
+const VISION_RADIUS: int = 7

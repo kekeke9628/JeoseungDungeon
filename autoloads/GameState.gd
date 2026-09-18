@@ -7,6 +7,7 @@ signal inventory_changed
 signal gold_changed(new_gold: int)
 signal level_changed(new_level: int, xp: int, xp_to_next: int)
 signal leveled_up(new_level: int)
+signal skill_changed
 
 var current_floor: int = 1
 var gold: int = 0
@@ -15,6 +16,11 @@ var player_level: int = 1
 var player_xp: int = 0
 var player_xp_to_next: int = 20
 var turn_count: int = 0
+var skill_cooldown_left: int = 0
+
+## Set by the menu before Game.tscn loads; survive reset_run().
+var selected_class_id: String = "mudang"
+var pending_continue: bool = false
 var equipped_weapon: ItemData
 var equipped_armor: ItemData
 
@@ -30,6 +36,7 @@ func reset_run() -> void:
 	player_xp = 0
 	player_xp_to_next = 20
 	turn_count = 0
+	skill_cooldown_left = 0
 	equipped_weapon = null
 	equipped_armor = null
 	inventory.clear()

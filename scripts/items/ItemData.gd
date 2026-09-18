@@ -12,6 +12,8 @@ enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC }
 @export var description: String = ""
 @export var identified_description: String = ""
 @export var stackable: bool = false
+## Shallowest floor on which this item can appear as random floor loot.
+@export var min_floor: int = 1
 @export var is_cursed: bool = false
 
 @export_group("Effect Values")

@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1")
-id = "hemp_garment"
+id = "diamond_armor"
 item_type = 1
-identified_name = "삼베 수의"
-unidentified_name = "거친 옷"
-description = "거친 삼베로 지은 옷."
-identified_description = "삼베 수의. 방어력 +1."
+identified_name = "금강 갑주"
+unidentified_name = "묵직한 갑옷"
+description = "들기도 힘들 만큼 묵직한 갑옷."
+identified_description = "금강 갑주. 방어력 +4."
 stackable = false
 is_cursed = false
-min_floor = 1
+min_floor = 7
 value_a = 0
-value_b = 1
+value_b = 4
 gold_value = 10

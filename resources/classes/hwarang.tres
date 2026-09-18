@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CharacterClassData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/CharacterClassData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 34
+attack_min = 3
+attack_max = 6
+defense = 0
+accuracy = 86
+evasion = 6
+
+[resource]
+script = ExtResource("1")
+id = "hwarang"
+display_name = "화랑"
+description = "신라의 청년 무사 화랑. 튼튼한 몸과 검술로 정면 돌파한다."
+stats = SubResource("Resource_stats")
+starting_item_ids = Array[String](["rusty_sword", "flower_wine", "flower_wine"])
+starting_equip_ids = Array[String](["rusty_sword"])
+skill_id = "ilseom"
+skill_name = "일섬"
+skill_description = "인접한 적을 세 배의 힘으로 벤다."
+skill_cooldown = 14
+color = Color(0.55, 0.75, 0.95, 1)
+glyph = "화"

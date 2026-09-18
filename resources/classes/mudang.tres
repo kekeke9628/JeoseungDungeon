@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 30
+max_hp = 32
 attack_min = 2
 attack_max = 5
 defense = 0
@@ -19,5 +19,10 @@ display_name = "무당"
 description = "산 자와 죽은 자 사이를 잇는 무당. 부적과 신단검으로 저승을 헤쳐 나간다."
 stats = SubResource("Resource_stats")
 starting_item_ids = Array[String](["spirit_dagger", "talisman", "talisman", "talisman", "flower_wine", "flower_wine"])
-color = Color(0.90, 0.90, 0.95, 1)
+starting_equip_ids = Array[String](["spirit_dagger"])
+skill_id = "salpuri"
+skill_name = "살풀이"
+skill_description = "체력을 최대치의 40% 회복한다."
+skill_cooldown = 20
+color = Color(0.9, 0.9, 0.95, 1)
 glyph = "무"

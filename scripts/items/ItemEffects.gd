@@ -17,6 +17,9 @@ static func use_item(item: ItemData, player: Player) -> bool:
 static func _drink(item: ItemData, player: Player) -> bool:
 	GameState.identify(item.id)
 	GameState.remove_item(item)
+	if item.value_b > 0:
+		player.stats.max_hp += item.value_b
+		MessageBus.log_message("최대 체력이 %d 늘어났다!" % item.value_b)
 	player.heal(item.value_a)
 	MessageBus.log_message("%s 마셨다. 체력이 %d 회복됐다." % [Josa.eul_reul(item.identified_name), item.value_a])
 	return true
@@ -32,6 +35,22 @@ static func _read(item: ItemData, player: Player) -> bool:
 			GameState.remove_item(item)
 			MessageBus.log_message("부적이 타오르며 %s에게 %d의 피해를 입혔다!" % [target.display_name, item.value_a])
 			target.take_damage(item.value_a)
+			return true
+		"teleport_talisman":
+			var dest: Vector2i = DungeonState.random_free_floor_tile()
+			if dest.x < 0:
+				MessageBus.log_message("부적이 아무 반응도 하지 않는다.")
+				return false
+			GameState.identify(item.id)
+			GameState.remove_item(item)
+			DungeonState.move_actor(player, player.grid_pos, dest)
+			MessageBus.log_message("몸이 순식간에 다른 곳으로 옮겨졌다!")
+			return true
+		"clairvoyance_talisman":
+			GameState.identify(item.id)
+			GameState.remove_item(item)
+			DungeonState.reveal_all()
+			MessageBus.log_message("눈앞에 이 층의 모습이 펼쳐진다.")
 			return true
 		"ledger_fragment":
 			var unknown: Array[ItemData] = []

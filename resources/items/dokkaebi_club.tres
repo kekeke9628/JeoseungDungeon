@@ -12,6 +12,7 @@ description = "묵직한 몽둥이. 어딘가 기묘한 기운이 느껴진다."
 identified_description = "도깨비 방망이. 공격력 +5."
 stackable = false
 is_cursed = false
+min_floor = 3
 value_a = 5
 value_b = 0
 gold_value = 10

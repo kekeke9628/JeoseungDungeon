@@ -12,6 +12,7 @@ description = "알 수 없는 글씨가 적힌 부적."
 identified_description = "살귀 부적. 가까운 적에게 피해 10을 준다."
 stackable = true
 is_cursed = false
+min_floor = 1
 value_a = 10
 value_b = 0
 gold_value = 10

@@ -5,26 +5,35 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 (SPD는 GPL-3.0이라 코드·에셋을 가져오면 안 됩니다).
 
 ## 실행
-- 에디터: Godot 4.7.1로 `project.godot` 열기 -> F5
-- 조작: 방향키/WASD 이동(적에게 부딪히면 공격), Space 대기, I 가방. 모바일은 화면 D-pad.
+- 에디터: Godot 4.7.1로 `project.godot` 열기 -> F5 (메인 메뉴에서 시작)
+- 조작: 방향키/WASD 이동(적에게 부딪히면 공격), Space 대기, E/Q 기술, I 가방. 모바일은 화면 D-pad와 기술 버튼.
 - 헤드리스 검증:
   - `Godot --headless --path . res://tests/SmokeTest.tscn` (로직 스모크 테스트, 실패 시 exit 1)
-  - `Godot --headless --path . res://tests/BalanceSim.tscn` (봇 20판 밸런스 시뮬레이션)
+  - `Godot --headless --path . res://tests/BalanceSim.tscn` (클래스별 봇 밸런스 시뮬레이션, 약 5분)
 
-## Phase 1 범위 (구현 완료)
-- 클래스 1개(무당), 몬스터 7종 + 보스(염라대왕), 아이템 8종, 8층 던전
-- 절차적 던전(방+복도), 턴제 전투, 아이템 감정(사용 시 정체 확인), 장비, 레벨업, 자연 회복
+## 구현 현황
+### Phase 1 (완료)
+- 절차적 던전(방+복도), 턴제 전투, 아이템 감정, 장비, 레벨업, 자연 회복, 모바일 UI
 - 데이터 주도: 아이템/몬스터/클래스는 `resources/**/*.tres` (스크립트 수정 없이 추가 가능)
-- 봇 시뮬레이션 기준 클리어율 약 55% (밸런스 출발점, 사람이 하면 더 쉬움)
+
+### Phase 2 (완료)
+- 클래스 3개: 무당(살풀이/회복), 화랑(일섬/3배 근접), 도사(뇌전/범위 피해) - 클래스별 기술과 재사용 대기
+- 던전 20층, 중간 보스 강림차사(10층), 최종 보스 염라대왕(20층)
+- 몬스터 17종(보스 2 포함), 아이템 16종(층별 등장 제한 `min_floor`), 축지/천리안 부적, 영약(최대 체력 영구 증가)
+- 시야/안개(Bresenham 시야, 탐험한 곳 기억), 문(시야 차단, 밟으면 열림), 숨은 함정(가시/순간이동)
+- 원거리 몬스터는 시야가 있어야 공격
+- 저장/이어하기: 층 진입 시 자동 저장(`user://save.json`), 사망/클리어 시 삭제(영구 사망)
+- 메인 메뉴 + 직업 선택 화면
+- 봇 시뮬레이션 기준 클리어율 클래스별 약 50% (무당 5/8, 화랑 4/8, 도사 4/8). 봇은 사람보다 못하므로 실제는 더 쉬울 수 있음
 
 ## 구조
-- `autoloads/` 전역 상태 (GameState, DungeonState, TurnManager, ItemDatabase, MonsterDatabase, MessageBus)
-- `scripts/core` Actor/Player/Game/CombatSystem, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더
-- `scripts/items` ItemData/ItemEffects, `scripts/ui` 코드로 만든 UI
+- `autoloads/` 전역 상태 (GameState, DungeonState, TurnManager, SaveManager, ItemDatabase, MonsterDatabase, MessageBus)
+- `scripts/core` Actor/Player/Game/CombatSystem/Josa, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더
+- `scripts/items` ItemData/ItemEffects/SkillEffects, `scripts/ui` 코드로 만든 UI
 - 아트는 색 사각형 + 글자 플레이스홀더. 실제 스프라이트는 `Actor.gd`/`DungeonRenderer.gd`만 교체
 
 ## 다음 단계
-- Phase 2: 클래스 추가, 몬스터/아이템/스킬 확장, 20+층, 함정/문/시야(안개), 저장/불러오기
 - Phase 3: 픽셀아트 에셋, 사운드, 한글 폰트 번들(Noto Sans KR 등, 현재는 시스템 폰트 fallback),
-  IAP 연동, Android/iOS export 설정, 스토어 준비
-- 알려진 한계: 시야/안개 없음, 원거리 몬스터는 벽 무시, 함정/문 미구현, 저장 없음
+  IAP 연동(무료+인앱결제), Android/iOS export 설정, 스토어 준비, 실기기 터치 테스트
+- 알려진 한계: 도움말/튜토리얼 없음, 설정(볼륨 등) 없음, 층 중간 저장 없음(층 진입 시점만 저장),
+  몬스터가 함정을 무시함, 실기기(Android/iOS)에서는 아직 실행해 보지 않음

@@ -6,7 +6,6 @@ extends Node
 var failures: int = 0
 var game: Node2D
 
-
 func check(cond: bool, msg: String) -> void:
 	if cond:
 		print("  PASS  ", msg)
@@ -16,12 +15,21 @@ func check(cond: bool, msg: String) -> void:
 
 func _ready() -> void:
 	seed(12345)
+	SaveManager.save_path = "user://test_save.json"
+	await _run()
+	SaveManager.delete_save()
+	print("== %d failure(s)" % failures)
+	get_tree().quit(1 if failures > 0 else 0)
+
+func _new_game(class_id: String, continuing: bool = false) -> void:
+	if game != null:
+		game.queue_free()
+		await get_tree().process_frame
+	GameState.selected_class_id = class_id
+	GameState.pending_continue = continuing
 	game = load("res://scenes/Game.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
-	await _run()
-	print("== %d failure(s)" % failures)
-	get_tree().quit(1 if failures > 0 else 0)
 
 func _reachable(from: Vector2i, to: Vector2i) -> bool:
 	var seen := {from: true}
@@ -41,93 +49,258 @@ func _god_mode() -> void:
 	game.player.stats.max_hp = 99999
 	game.player.current_hp = 99999
 
+func _clear_monsters() -> Array:
+	var saved: Array = TurnManager.monsters.duplicate()
+	TurnManager.monsters.clear()
+	return saved
+
 func _run() -> void:
+	await _test_content()
+	await _test_classes()
+	await _test_generation()
+	await _test_items()
+	await _test_vision_doors_traps()
+	await _test_random_play()
+	await _test_progression()
+	await _test_save_load()
+
+func _test_content() -> void:
 	print("[content]")
-	check(ItemDatabase.items.size() == 8, "8 items loaded (got %d)" % ItemDatabase.items.size())
-	check(MonsterDatabase.monsters.size() == 8, "8 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
-	check(MonsterDatabase.get_boss_for_floor(8) != null, "boss registered for floor 8")
-	for f in range(1, 8):
-		check(MonsterDatabase.get_monsters_for_floor(f).size() > 0, "monster pool non-empty on floor %d" % f)
+	check(ItemDatabase.items.size() == 16, "16 items loaded (got %d)" % ItemDatabase.items.size())
+	check(MonsterDatabase.monsters.size() == 17, "17 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
+	check(MonsterDatabase.get_boss_for_floor(10) != null, "boss on floor 10")
+	check(MonsterDatabase.get_boss_for_floor(20) != null, "boss on floor 20")
+	for f in range(1, 20):
+		var boss_floor: bool = MonsterDatabase.get_boss_for_floor(f) != null
+		var pool_floor: int = f - 1 if boss_floor else f
+		check(MonsterDatabase.get_monsters_for_floor(pool_floor).size() > 0, "monster pool non-empty for floor %d" % f)
+	check(MonsterDatabase.get_monsters_for_floor(19).size() > 0, "monster pool non-empty for floor 19")
 
-	print("[start state]")
-	check(is_instance_valid(game.player), "player spawned")
-	check(GameState.equipped_weapon != null and GameState.equipped_weapon.id == "spirit_dagger", "starting dagger equipped")
-	check(game.player.stats.attack_max == 7, "dagger bonus applied to attack (max=%d)" % game.player.stats.attack_max)
+func _test_classes() -> void:
+	print("[classes]")
+	var expected := {"mudang": 7, "hwarang": 9, "dosa": 6}
+	for id in ["mudang", "hwarang", "dosa"]:
+		await _new_game(id)
+		var p: Player = game.player
+		check(is_instance_valid(p) and p.is_alive, "%s spawns" % id)
+		check(GameState.equipped_weapon != null, "%s has weapon equipped" % id)
+		check(p.stats.attack_max == expected[id], "%s attack_max %d (want %d)" % [id, p.stats.attack_max, expected[id]])
+		check(GameState.player_class.skill_id != "", "%s has a skill" % id)
 
-	print("[generation x50]")
+func _test_generation() -> void:
+	print("[generation x60]")
 	var all_connected := true
-	for i in range(50):
-		var r: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, 1 + i % 8)
+	var doors := 0
+	var traps := 0
+	for i in range(60):
+		var r: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, 1 + i % 20)
 		DungeonState.grid = r.grid
 		if not _reachable(r.start_pos, r.stairs_pos):
 			all_connected = false
-	check(all_connected, "start always reaches stairs")
-	game._load_floor(1)
+		for pos in r.grid.keys():
+			if r.grid[pos] == DungeonState.Tile.DOOR:
+				doors += 1
+			elif r.grid[pos] == DungeonState.Tile.TRAP:
+				traps += 1
+	check(all_connected, "start always reaches stairs (doors/traps walkable)")
+	check(doors > 0, "doors are generated (%d)" % doors)
+	check(traps > 0, "traps are generated (%d)" % traps)
 
-	print("[inventory / items]")
+func _adjacent_free_tile(pos: Vector2i) -> Vector2i:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = pos + d
+		if DungeonState.tile_at(n) == DungeonState.Tile.FLOOR and DungeonState.get_actor_at(n) == null:
+			return n
+	return Vector2i(-1, -1)
+
+func _test_items() -> void:
+	print("[items and skills]")
+	await _new_game("mudang")
 	_god_mode()
-	var talisman: ItemData = ItemDatabase.get_item("talisman")
-	var saved_monsters: Array = TurnManager.monsters.duplicate()
-	TurnManager.monsters.clear()
-	check(ItemEffects.use_item(talisman, game.player) == false, "talisman with no target consumes nothing")
-	TurnManager.monsters.append_array(saved_monsters)
-	game.player.current_hp = 10
-	var wine: ItemData = ItemDatabase.get_item("flower_wine")
-	check(ItemEffects.use_item(wine, game.player), "potion used")
-	check(game.player.current_hp == 25, "potion healed 15 (hp=%d)" % game.player.current_hp)
+	var p: Player = game.player
+	var saved: Array = _clear_monsters()
+	check(not ItemEffects.use_item(ItemDatabase.get_item("talisman"), p), "talisman with no target consumes nothing")
+	TurnManager.monsters.append_array(saved)
+	p.current_hp = 10
+	check(ItemEffects.use_item(ItemDatabase.get_item("flower_wine"), p) and p.current_hp == 25, "potion heals 15")
+	var max_before: int = p.stats.max_hp
+	GameState.add_item(ItemDatabase.get_item("elixir"))
+	ItemEffects.use_item(ItemDatabase.get_item("elixir"), p)
+	check(p.stats.max_hp == max_before + 8, "elixir raises max hp by 8")
+	var atk_before: int = p.stats.attack_max
 	GameState.add_item(ItemDatabase.get_item("rusty_sword"))
-	var before_max: int = game.player.stats.attack_max
-	ItemEffects.use_item(ItemDatabase.get_item("rusty_sword"), game.player)
-	check(game.player.stats.attack_max == before_max - 2 + 3, "weapon swap adjusts attack (%d)" % game.player.stats.attack_max)
-	check(GameState.inventory.any(func(e): return e.item_data.id == "spirit_dagger"), "old weapon returned to bag")
-	GameState.add_item(ItemDatabase.get_item("soul_armor"))
-	ItemEffects.use_item(ItemDatabase.get_item("soul_armor"), game.player)
-	check(game.player.stats.defense == 2, "armor applied")
-	GameState.add_item(ItemDatabase.get_item("ledger_fragment"))
-	GameState.add_item(ItemDatabase.get_item("hemp_garment"))
-	check(ItemEffects.use_item(ItemDatabase.get_item("ledger_fragment"), game.player), "identify scroll used")
+	ItemEffects.use_item(ItemDatabase.get_item("rusty_sword"), p)
+	check(p.stats.attack_max == atk_before - 2 + 3, "weapon swap adjusts attack")
+	GameState.add_item(ItemDatabase.get_item("dragon_armor"))
+	ItemEffects.use_item(ItemDatabase.get_item("dragon_armor"), p)
+	check(p.stats.defense == 6, "armor applied")
+	var old_pos: Vector2i = p.grid_pos
+	GameState.add_item(ItemDatabase.get_item("teleport_talisman"))
+	check(ItemEffects.use_item(ItemDatabase.get_item("teleport_talisman"), p) and p.grid_pos != old_pos, "teleport moves the player")
+	check(DungeonState.actors_at.get(p.grid_pos) == p, "teleport keeps actor map in sync")
+	GameState.add_item(ItemDatabase.get_item("clairvoyance_talisman"))
+	ItemEffects.use_item(ItemDatabase.get_item("clairvoyance_talisman"), p)
+	check(DungeonState.explored.size() == DungeonState.grid.size(), "clairvoyance reveals whole floor")
 
+	p.current_hp = 10
+	game._on_skill_pressed()
+	check(p.current_hp > 10, "mudang skill heals")
+	var turns: int = GameState.turn_count
+	game._on_skill_pressed()
+	check(GameState.turn_count == turns, "skill on cooldown does not consume a turn")
+
+	await _new_game("hwarang")
+	saved = _clear_monsters()
+	var spot: Vector2i = _adjacent_free_tile(game.player.grid_pos)
+	game._spawn_monster_at(MonsterDatabase.get_monster("mongdal"), spot)
+	var target = DungeonState.get_actor_at(spot)
+	game._on_skill_pressed()
+	check(not is_instance_valid(target) or not target.is_alive, "hwarang ilseom kills adjacent target")
+	check(GameState.skill_cooldown_left > 0, "hwarang skill enters cooldown")
+
+	await _new_game("dosa")
+	_clear_monsters()
+	spot = _adjacent_free_tile(game.player.grid_pos)
+	game._spawn_monster_at(MonsterDatabase.get_monster("mongdal"), spot)
+	target = DungeonState.get_actor_at(spot)
+	game._on_skill_pressed()
+	check(not is_instance_valid(target) or not target.is_alive, "dosa noejeon kills nearby target")
+
+func _test_vision_doors_traps() -> void:
+	print("[vision / doors / traps]")
+	await _new_game("mudang")
+	var p: Player = game.player
+	check(DungeonState.visible_tiles.has(p.grid_pos), "player tile is visible")
+	check(DungeonState.explored.size() > 0 and DungeonState.explored.size() < DungeonState.grid.size(), "only part of the floor explored at start")
+	var hidden_ok := true
+	for m in TurnManager.monsters:
+		if m.visible != DungeonState.visible_tiles.has(m.grid_pos):
+			hidden_ok = false
+	check(hidden_ok, "monster visibility matches fov")
+
+	var saved_grid: Dictionary = DungeonState.grid.duplicate()
+	DungeonState.grid = {}
+	for x in range(0, 5):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	DungeonState.grid[Vector2i(2, 0)] = DungeonState.Tile.DOOR
+	check(not DungeonState.has_line_of_sight(Vector2i(0, 0), Vector2i(4, 0)), "closed door blocks sight")
+	DungeonState.grid[Vector2i(2, 0)] = DungeonState.Tile.FLOOR
+	check(DungeonState.has_line_of_sight(Vector2i(0, 0), Vector2i(4, 0)), "open door lets sight through")
+	DungeonState.grid = saved_grid
+
+	_clear_monsters()
+	DungeonState.actors_at.clear()
+	DungeonState.actors_at[p.grid_pos] = p
+	DungeonState.items_at.clear()
+	DungeonState.gold_at.clear()
+	var dir := Vector2i(-1, 0)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if DungeonState.tile_at(p.grid_pos + d) == DungeonState.Tile.FLOOR:
+			dir = d
+			break
+	var door_pos: Vector2i = p.grid_pos + dir
+	DungeonState.grid[door_pos] = DungeonState.Tile.DOOR
+	p.try_move(dir)
+	check(DungeonState.tile_at(door_pos) == DungeonState.Tile.FLOOR, "stepping onto a door opens it")
+
+	var trap_dir := Vector2i.ZERO
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if DungeonState.tile_at(p.grid_pos + d) == DungeonState.Tile.FLOOR:
+			trap_dir = d
+			break
+	var trap_pos: Vector2i = p.grid_pos + trap_dir
+	DungeonState.grid[trap_pos] = DungeonState.Tile.TRAP
+	var hp_before: int = p.current_hp
+	p.try_move(trap_dir)
+	check(DungeonState.tile_at(trap_pos) == DungeonState.Tile.TRAP_SPENT, "trap is spent after triggering")
+	check(p.current_hp < hp_before or p.grid_pos != trap_pos, "trap hurt or teleported the player")
+
+func _test_random_play() -> void:
 	print("[random play x600]")
+	await _new_game("hwarang")
 	_god_mode()
 	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 	var start_turns: int = GameState.turn_count
+	var vision_ok := true
 	for i in range(600):
 		game._on_direction_pressed(dirs[randi() % 4])
 		if i % 50 == 0:
 			game._on_wait_pressed()
 		if game._ended:
 			break
+		for m in TurnManager.monsters:
+			if is_instance_valid(m) and m.visible != DungeonState.visible_tiles.has(m.grid_pos):
+				vision_ok = false
 	check(GameState.turn_count > start_turns, "turns advanced (%d)" % (GameState.turn_count - start_turns))
 	check(not game._ended, "player survived random play in god mode")
+	check(vision_ok, "monster visibility tracks fov during play")
 
-	print("[floor descent 1->8]")
-	for f in range(1, 8):
-		game._load_floor(f)
-		_god_mode()
-		DungeonState.move_actor(game.player, game.player.grid_pos, DungeonState.stairs_pos)
-		game._after_player_action()
-		check(GameState.current_floor == f + 1, "stepping on stairs: floor %d -> %d" % [f, GameState.current_floor])
-	check(GameState.current_floor == 8, "reached boss floor")
-
-	print("[boss]")
-	var boss = null
+func _find_boss():
 	for m in TurnManager.monsters:
 		if is_instance_valid(m) and m.data.is_boss:
-			boss = m
-	check(boss != null, "boss present on floor 8")
+			return m
+	return null
+
+func _test_progression() -> void:
+	print("[floor descent 1->20 and bosses]")
+	await _new_game("mudang")
+	for f in range(1, 20):
+		game._load_floor(f)
+		_god_mode()
+		if f == 10:
+			var mid_boss = _find_boss()
+			check(mid_boss != null, "mid boss present on floor 10")
+			if mid_boss != null:
+				mid_boss.take_damage(99999)
+			check(not game._ended, "killing the floor-10 boss does not end the game")
+		DungeonState.move_actor(game.player, game.player.grid_pos, DungeonState.stairs_pos)
+		game._after_player_action()
+		if GameState.current_floor != f + 1:
+			check(false, "stairs %d -> %d (stuck at %d)" % [f, f + 1, GameState.current_floor])
+	check(GameState.current_floor == 20, "reached final floor")
+	var boss = _find_boss()
+	check(boss != null, "final boss present on floor 20")
 	var victory := [false]
 	GameState.game_over.connect(func(v): victory[0] = v)
 	if boss != null:
 		boss.take_damage(99999)
 	await get_tree().process_frame
-	check(victory[0], "killing boss emits victory")
+	check(victory[0], "killing the final boss emits victory")
 	check(game.game_over_screen.visible, "game over screen shown")
+	check(not SaveManager.has_save(), "save deleted when the run ends")
 
 	print("[death]")
-	game._ended = false
-	game._load_floor(3)
-	game.player.is_alive = true
+	await _new_game("dosa")
 	var defeat := [null]
 	GameState.game_over.connect(func(v): defeat[0] = v)
 	game.player.take_damage(999999)
 	check(defeat[0] == false, "player death emits defeat")
+	check(not SaveManager.has_save(), "save deleted on death")
+
+func _test_save_load() -> void:
+	print("[save / load]")
+	await _new_game("dosa")
+	game._load_floor(5)
+	GameState.add_gold(77)
+	GameState.add_xp(30)
+	GameState.skill_cooldown_left = 4
+	game.player.current_hp = 11
+	GameState.identify("talisman")
+	SaveManager.save_run(game.player)
+	check(SaveManager.has_save(), "save file written")
+	var inv_count: int = GameState.inventory.size()
+	var level: int = GameState.player_level
+	var gold: int = GameState.gold
+	var max_hp: int = game.player.stats.max_hp
+	await _new_game("mudang", true)
+	check(GameState.player_class.id == "dosa", "continue restores the saved class (got %s)" % GameState.player_class.id)
+	check(GameState.current_floor == 5, "continue restores floor (got %d)" % GameState.current_floor)
+	check(GameState.gold == gold, "continue restores gold")
+	check(GameState.player_level == level, "continue restores level")
+	check(GameState.inventory.size() == inv_count, "continue restores inventory")
+	check(game.player.stats.max_hp == max_hp, "continue restores max hp")
+	check(game.player.current_hp == 11, "continue restores current hp")
+	check(GameState.skill_cooldown_left == 4, "continue restores skill cooldown")
+	check(GameState.is_identified("talisman"), "continue restores identification")
+	SaveManager.delete_save()
+	check(not SaveManager.has_save(), "delete_save removes the file")

@@ -12,6 +12,7 @@ description = "닿기만 해도 서늘한 갑옷."
 identified_description = "혼백 갑주. 방어력 +2."
 stackable = false
 is_cursed = false
+min_floor = 2
 value_a = 0
 value_b = 2
 gold_value = 10

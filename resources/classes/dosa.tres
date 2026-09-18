@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CharacterClassData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/CharacterClassData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/core/ActorStats.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_stats"]
+script = ExtResource("2")
+max_hp = 32
+attack_min = 2
+attack_max = 4
+defense = 0
+accuracy = 82
+evasion = 10
+
+[resource]
+script = ExtResource("1")
+id = "dosa"
+display_name = "도사"
+description = "산속에서 도를 닦은 도사. 부적술로 멀리서 적을 쓸어낸다."
+stats = SubResource("Resource_stats")
+starting_item_ids = Array[String](["spirit_dagger", "talisman", "talisman", "talisman", "talisman", "talisman", "flower_wine", "flower_wine", "ledger_fragment"])
+starting_equip_ids = Array[String](["spirit_dagger"])
+skill_id = "noejeon"
+skill_name = "뇌전"
+skill_description = "시야 안 4칸 이내 모든 적에게 번개를 내린다."
+skill_cooldown = 12
+color = Color(0.75, 0.95, 0.75, 1)
+glyph = "도"

@@ -12,6 +12,7 @@ description = "녹이 슨 칼. 아직 쓸 만해 보인다."
 identified_description = "녹슨 환도. 공격력 +3."
 stackable = false
 is_cursed = false
+min_floor = 1
 value_a = 3
 value_b = 0
 gold_value = 10

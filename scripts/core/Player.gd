@@ -3,6 +3,9 @@ extends Actor
 ## Player-controlled actor. Movement/attack/wait are invoked by Game.gd in
 ## response to input; this class only resolves the consequences of one action.
 
+const TRAP_BASE_DAMAGE: int = 4
+const TELEPORT_TRAP_CHANCE: float = 0.4
+
 func _ready() -> void:
 	TurnManager.register_player(self)
 
@@ -20,6 +23,7 @@ func try_move(dir: Vector2i) -> bool:
 	if DungeonState.is_walkable(target):
 		DungeonState.move_actor(self, grid_pos, target)
 		_check_pickup(target)
+		_check_trap(target)
 		TurnManager.end_player_turn()
 		return true
 	return false
@@ -49,3 +53,17 @@ func _check_pickup(pos: Vector2i) -> void:
 	if gold > 0:
 		GameState.add_gold(gold)
 		MessageBus.log_message("저승길 동전 %d개를 주웠다." % gold)
+
+func _check_trap(pos: Vector2i) -> void:
+	if DungeonState.tile_at(pos) != DungeonState.Tile.TRAP:
+		return
+	DungeonState.set_tile(pos, DungeonState.Tile.TRAP_SPENT)
+	if randf() < TELEPORT_TRAP_CHANCE:
+		var dest: Vector2i = DungeonState.random_free_floor_tile()
+		if dest.x >= 0:
+			MessageBus.log_message("함정이다! 발밑이 꺼지며 다른 곳으로 끌려갔다.")
+			DungeonState.move_actor(self, grid_pos, dest)
+			return
+	var dmg: int = TRAP_BASE_DAMAGE + GameState.current_floor
+	MessageBus.log_message("함정이다! 가시에 찔려 %d의 피해를 입었다." % dmg)
+	take_damage(dmg)
