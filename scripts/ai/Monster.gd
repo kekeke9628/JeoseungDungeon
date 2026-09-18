@@ -11,7 +11,7 @@ var data: MonsterData
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
-	setup(p_data.stats, p_data.color, p_data.glyph, p_data.display_name)
+	setup(p_data.stats, p_data.color, p_data.glyph, p_data.display_name, p_data.id)
 	TurnManager.register_monster(self)
 
 func take_ai_turn() -> void:

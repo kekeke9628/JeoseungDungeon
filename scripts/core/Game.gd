@@ -76,7 +76,7 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	GameState.player_class = class_data
 	player = Player.new()
 	world.add_child(player)
-	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name)
+	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
 	player.hp_changed.connect(hud.set_hp)
 
 	camera = Camera2D.new()

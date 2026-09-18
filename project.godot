@@ -22,6 +22,10 @@ MonsterDatabase="*res://autoloads/MonsterDatabase.gd"
 DungeonState="*res://autoloads/DungeonState.gd"
 TurnManager="*res://autoloads/TurnManager.gd"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansKR.ttf"
+
 [display]
 
 window/size/viewport_width=720
@@ -31,6 +35,8 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
 
 [rendering]
+
+textures/canvas_textures/default_texture_filter=0
 
 renderer/rendering_method="mobile"
 environment/defaults/default_clear_color=Color(0.03, 0.02, 0.05, 1)

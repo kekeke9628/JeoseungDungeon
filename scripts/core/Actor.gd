@@ -20,6 +20,7 @@ var display_name: String = ""
 var visual: ColorRect
 var label: Label
 var hp_bar: ColorRect
+var sprite: TextureRect
 
 func _init() -> void:
 	var ts: int = Constants.TILE_SIZE
@@ -38,6 +39,14 @@ func _init() -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visual.add_child(label)
 
+	sprite = TextureRect.new()
+	sprite.size = Vector2(ts, ts)
+	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sprite.stretch_mode = TextureRect.STRETCH_SCALE
+	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sprite.visible = false
+	add_child(sprite)
+
 	hp_bar = ColorRect.new()
 	hp_bar.color = Color(0.2, 0.9, 0.3)
 	hp_bar.position = Vector2(3, 0)
@@ -45,12 +54,18 @@ func _init() -> void:
 	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_bar)
 
-func setup(p_stats: ActorStats, p_color: Color, p_glyph: String, p_display_name: String) -> void:
+func setup(p_stats: ActorStats, p_color: Color, p_glyph: String, p_display_name: String, p_sprite_id: String = "") -> void:
 	stats = p_stats
 	current_hp = stats.max_hp
 	display_name = p_display_name
 	visual.color = p_color
 	label.text = p_glyph
+	var tex: Texture2D = SpriteLibrary.get_actor(p_sprite_id)
+	if tex != null:
+		sprite.texture = tex
+		sprite.visible = true
+		visual.color = Color(0, 0, 0, 0)
+		label.text = ""
 	_update_hp_bar()
 
 func move_to_grid(pos: Vector2i) -> void:
