@@ -9,6 +9,8 @@ config_version=5
 config/name="Jeoseung Dungeon"
 config/description="한국 설화 기반 턴제 로그라이크 던전 크롤러"
 run/main_scene="res://scenes/MainMenu.tscn"
+config/icon="res://assets/icon.png"
+config/version="0.3.0"
 config/features=PackedStringArray("4.3", "Mobile")
 
 [autoload]
@@ -41,5 +43,6 @@ window/stretch/aspect="keep"
 
 textures/canvas_textures/default_texture_filter=0
 
-renderer/rendering_method="mobile"
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.03, 0.02, 0.05, 1)

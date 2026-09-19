@@ -26,7 +26,11 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 - 메인 메뉴 + 직업 선택 화면
 - 봇 시뮬레이션 기준 클리어율 클래스별 약 50% (무당 5/8, 화랑 4/8, 도사 4/8). 봇은 사람보다 못하므로 실제는 더 쉬울 수 있음
 
-### Phase 3 (진행 중: 폰트와 픽셀아트 완료)
+### Phase 3 (진행 중)
+- 사운드: `python tools/gen_audio.py` 로 효과음 17종 + 음악 2곡(탐험/보스) 생성, 볼륨 설정 저장 (`AudioManager`, `SettingsManager`)
+- 설정 화면, 첫 실행 도움말, 메인 메뉴 상점
+- 인앱결제 구조: `IAPManager` (부활 부적 소모성 / 후원자 팩 영구). 디버그 빌드에서만 모의 결제, 릴리스는 스토어 연결 전까지 구매 차단(안전장치)
+- 출시 준비: 앱 아이콘, Compatibility 렌더러(저사양 안드로이드 호환), 내보내기 프리셋 템플릿, `docs/RELEASE.md`, `docs/PRIVACY_POLICY.md`, `docs/STORE_LISTING.md`
 - 한글 폰트 번들: Noto Sans KR(OFL)을 KS X 1001 2,350자로 줄여(약 0.8MB) 기본 GUI 폰트로 사용 (`assets/fonts/`)
 - 픽셀아트: 16x16 스프라이트 42종(몬스터 17, 클래스 3, 타일 5, 아이템 아이콘 17)을 `python tools/gen_sprites.py`로 생성. 템플릿은 `tools/sprite_templates.py`
 - 스프라이트가 없으면 색 사각형+글자로 자동 대체 (`SpriteLibrary`)
@@ -38,7 +42,6 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 - 스프라이트는 `assets/sprites/**`(생성 결과물)를 `SpriteLibrary`가 읽음. 더 좋은 아트로 교체하려면 같은 파일명의 PNG로 덮어쓰면 됨
 
 ## 다음 단계
-- Phase 3 남은 것: 사운드/음악, 설정 화면, IAP 연동(무료+인앱결제), Android/iOS export 설정(내보내기 템플릿·JDK·Android SDK 필요, iOS는 Mac 필요),
-  스토어 준비, 실기기 터치 테스트
+- Phase 3 남은 것: 실제 스토어 결제 플러그인 연결, Android/iOS 실제 빌드(내보내기 템플릿·JDK·Android SDK 필요, iOS는 Mac 필요), 실기기 터치 테스트, 전문 아트/사운드로 교체(선택)
 - 알려진 한계: 도움말/튜토리얼 없음, 설정(볼륨 등) 없음, 층 중간 저장 없음(층 진입 시점만 저장),
   몬스터가 함정을 무시함, 실기기(Android/iOS)에서는 아직 실행해 보지 않음
