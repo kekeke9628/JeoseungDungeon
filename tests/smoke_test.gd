@@ -78,6 +78,7 @@ func _run() -> void:
 	await _test_boss_summon()
 	await _test_polish()
 	await _test_floor_theme()
+	await _test_features()
 
 func _test_content() -> void:
 	print("[content]")
@@ -544,3 +545,52 @@ func _test_floor_theme() -> void:
 	check(FloorTheme.band_name(20) == "염라전", "floor 20 is the last band")
 	check(FloorTheme.tint(1) != FloorTheme.tint(6) and FloorTheme.tint(6) != FloorTheme.tint(11), "bands have distinct tints")
 	check(FloorTheme.band_name(99) == "염라전" and FloorTheme.band_name(0) == "저승길", "out-of-range floors are clamped")
+
+func _test_features() -> void:
+	print("[wells and altars]")
+	var wells := 0
+	var altars := 0
+	for i in range(80):
+		var r: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, 5)
+		DungeonState.grid = r.grid
+		for pos in r.grid.keys():
+			if r.grid[pos] == DungeonState.Tile.WELL:
+				wells += 1
+			elif r.grid[pos] == DungeonState.Tile.ALTAR:
+				altars += 1
+		check(r.grid[r.start_pos] == DungeonState.Tile.FLOOR, "start tile stays plain floor") if i == 0 else null
+	check(wells > 0 and altars > 0, "wells (%d) and altars (%d) are generated" % [wells, altars])
+	var early: bool = false
+	for i in range(40):
+		var r1: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, 1)
+		for pos in r1.grid.keys():
+			if r1.grid[pos] == DungeonState.Tile.WELL or r1.grid[pos] == DungeonState.Tile.ALTAR:
+				early = true
+	check(not early, "no wells or altars on floor 1")
+
+	await _new_game("hwarang")
+	var p: Player = game.player
+	_clear_monsters()
+	DungeonState.actors_at.clear()
+	DungeonState.actors_at[p.grid_pos] = p
+	var dir := Vector2i(1, 0)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		if DungeonState.tile_at(p.grid_pos + d) == DungeonState.Tile.FLOOR:
+			dir = d
+			break
+	var well_pos: Vector2i = p.grid_pos + dir
+	DungeonState.grid[well_pos] = DungeonState.Tile.WELL
+	p.try_move(dir)
+	check(DungeonState.tile_at(well_pos) == DungeonState.Tile.WELL, "a well is not wasted at full hp")
+	p.try_move(-dir)
+	p.current_hp = 5
+	p.try_move(dir)
+	check(p.current_hp > 5 and DungeonState.tile_at(well_pos) == DungeonState.Tile.FLOOR, "a well heals and is used up")
+
+	p.try_move(-dir)
+	var altar_pos: Vector2i = p.grid_pos + dir
+	DungeonState.grid[altar_pos] = DungeonState.Tile.ALTAR
+	var before: int = p.stats.max_hp + p.stats.attack_max + p.stats.defense
+	p.try_move(dir)
+	var after: int = p.stats.max_hp + p.stats.attack_max + p.stats.defense
+	check(after > before and DungeonState.tile_at(altar_pos) == DungeonState.Tile.FLOOR, "an altar grants a permanent boon and is used up")

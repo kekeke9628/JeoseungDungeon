@@ -8,6 +8,7 @@ signal status_changed
 const POISON_TURNS: int = 4
 const STUN_TURNS: int = 1
 const TRAP_BASE_DAMAGE: int = 4
+const WELL_HEAL_FRACTION: float = 0.5
 const TELEPORT_TRAP_CHANCE: float = 0.4
 
 func _ready() -> void:
@@ -28,6 +29,7 @@ func try_move(dir: Vector2i) -> bool:
 		DungeonState.move_actor(self, grid_pos, target)
 		_check_pickup(target)
 		_check_trap(target)
+		_check_feature(target)
 		TurnManager.end_player_turn()
 		return true
 	return false
@@ -135,3 +137,32 @@ func _rest_tint() -> Color:
 	if statuses.has("stun"):
 		return Color(1.0, 1.0, 0.6)
 	return Color.WHITE
+
+## Wells and altars are used up when triggered. A well is left alone if it
+## would be wasted (full HP, no poison).
+func _check_feature(pos: Vector2i) -> void:
+	match DungeonState.tile_at(pos):
+		DungeonState.Tile.WELL:
+			if current_hp >= stats.max_hp and not has_status("poison"):
+				MessageBus.log_message("맑은 우물이 있다. 지금은 필요하지 않다.")
+				return
+			cure_status("poison")
+			heal(int(stats.max_hp * WELL_HEAL_FRACTION))
+			DungeonState.set_tile(pos, DungeonState.Tile.FLOOR)
+			AudioManager.play("potion")
+			MessageBus.log_message("우물물을 마시니 기운이 돌아온다.")
+		DungeonState.Tile.ALTAR:
+			DungeonState.set_tile(pos, DungeonState.Tile.FLOOR)
+			AudioManager.play("levelup")
+			match randi() % 3:
+				0:
+					stats.max_hp += 6
+					heal(6)
+					MessageBus.log_message("제단이 생명을 나누어 주었다. 최대 체력 +6")
+				1:
+					stats.attack_min += 1
+					stats.attack_max += 1
+					MessageBus.log_message("제단이 힘을 나누어 주었다. 공격력 +1")
+				_:
+					stats.defense += 1
+					MessageBus.log_message("제단이 가호를 내렸다. 방어력 +1")

@@ -30,6 +30,12 @@ func _ready() -> void:
 	for i in range(ids.size(), mini(ids.size() + loot.size(), free.size())):
 		DungeonState.place_item(free[i], ItemDatabase.get_item(loot[i - ids.size()]))
 	game._refresh_vision()
+	if "--features" in OS.get_cmdline_user_args() and free.size() >= 2:
+		DungeonState.set_tile(free[0], DungeonState.Tile.WELL)
+		DungeonState.set_tile(free[1], DungeonState.Tile.ALTAR)
+		for m in TurnManager.monsters.duplicate():
+			m.queue_free()
+		TurnManager.monsters.clear()
 	p.take_damage(9)
 	if "--inventory" in OS.get_cmdline_user_args():
 		for id in ["flower_wine", "antidote_herb", "teleport_talisman", "dragon_armor"]:

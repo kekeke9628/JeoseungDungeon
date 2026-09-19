@@ -149,6 +149,31 @@ def tile_stairs():
     return img
 
 
+def tile_well(rng):
+    img = tile_floor(rng)
+    for y in range(16):
+        for x in range(16):
+            d = (x - 7.5) ** 2 + (y - 7.5) ** 2
+            if d <= 30:
+                img.putpixel((x, y), (60, 130, 210, 255) if d > 12 else (120, 190, 250, 255))
+            if 30 < d <= 42:
+                img.putpixel((x, y), (110, 100, 125, 255))
+    return img
+
+
+def tile_altar(rng):
+    img = tile_floor(rng)
+    for y in range(9, 14):
+        for x in range(3, 13):
+            img.putpixel((x, y), (120, 110, 135, 255) if y > 9 else (160, 150, 175, 255))
+    for y in range(4, 9):
+        for x in (7, 8):
+            img.putpixel((x, y), (250, 190, 60, 255))
+    img.putpixel((7, 3), (255, 230, 120, 255))
+    img.putpixel((8, 3), (255, 230, 120, 255))
+    return img
+
+
 def save(img, *parts):
     path = os.path.join(OUT, *parts)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -167,7 +192,7 @@ def main():
         save(img, "actors", hid + ".png")
         sheet.append(img)
     tiles = {"floor": tile_floor(rng), "trap_spent": tile_floor(rng, True), "wall": tile_wall(rng),
-             "door": tile_door(), "stairs": tile_stairs()}
+             "door": tile_door(), "stairs": tile_stairs(), "well": tile_well(rng), "altar": tile_altar(rng)}
     for name, img in tiles.items():
         save(img, "tiles", name + ".png")
         sheet.append(img)

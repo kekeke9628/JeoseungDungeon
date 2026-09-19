@@ -8,6 +8,8 @@ const MIN_ROOM_SIZE: int = 4
 const MAX_ROOM_SIZE: int = 7
 const MAX_PLACEMENT_ATTEMPTS: int = 300
 const DOOR_CHANCE: float = 0.6
+const WELL_CHANCE: float = 0.35
+const ALTAR_CHANCE: float = 0.3
 
 ## Returns {"grid": Dictionary, "rooms": Array[Rect2i], "start_pos": Vector2i, "stairs_pos": Vector2i}
 static func generate(width: int, height: int, floor_num: int) -> Dictionary:
@@ -38,6 +40,7 @@ static func generate(width: int, height: int, floor_num: int) -> Dictionary:
 	var stairs_pos: Vector2i = _center(rooms[rooms.size() - 1])
 	grid[stairs_pos] = DungeonState.Tile.STAIRS_DOWN
 	_place_traps(grid, rooms, floor_num, start_pos)
+	_place_features(grid, rooms, floor_num)
 	return {"grid": grid, "rooms": rooms, "start_pos": start_pos, "stairs_pos": stairs_pos}
 
 static func _center(rect: Rect2i) -> Vector2i:
@@ -109,3 +112,21 @@ static func _place_traps(grid: Dictionary, rooms: Array[Rect2i], floor_num: int,
 			randi_range(r.position.y, r.position.y + r.size.y - 1))
 		if pos != start_pos and grid.get(pos) == DungeonState.Tile.FLOOR:
 			grid[pos] = DungeonState.Tile.TRAP
+
+## Optional healing wells (floor 2+) and boon altars (floor 3+), never in the
+## start room.
+static func _place_features(grid: Dictionary, rooms: Array[Rect2i], floor_num: int) -> void:
+	if floor_num >= 2 and randf() < WELL_CHANCE:
+		_place_in_random_room(grid, rooms, DungeonState.Tile.WELL)
+	if floor_num >= 3 and randf() < ALTAR_CHANCE:
+		_place_in_random_room(grid, rooms, DungeonState.Tile.ALTAR)
+
+static func _place_in_random_room(grid: Dictionary, rooms: Array[Rect2i], tile: int) -> void:
+	for attempt in range(10):
+		var r: Rect2i = rooms[randi_range(1, rooms.size() - 1)]
+		var pos := Vector2i(
+			randi_range(r.position.x, r.position.x + r.size.x - 1),
+			randi_range(r.position.y, r.position.y + r.size.y - 1))
+		if grid.get(pos) == DungeonState.Tile.FLOOR:
+			grid[pos] = tile
+			return

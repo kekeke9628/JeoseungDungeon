@@ -3,7 +3,7 @@ extends Node
 ## actor occupancy, ground loot, and the player's field of view. Autoloaded
 ## as "DungeonState".
 
-enum Tile { WALL, FLOOR, DOOR, STAIRS_DOWN, TRAP, TRAP_SPENT }
+enum Tile { WALL, FLOOR, DOOR, STAIRS_DOWN, TRAP, TRAP_SPENT, WELL, ALTAR }
 
 signal changed
 

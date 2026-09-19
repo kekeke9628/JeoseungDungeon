@@ -36,6 +36,10 @@ func _tile_name(tile: int) -> String:
 			return "trap_spent"
 		DungeonState.Tile.WALL:
 			return "wall"
+		DungeonState.Tile.WELL:
+			return "well"
+		DungeonState.Tile.ALTAR:
+			return "altar"
 		_:
 			return "floor"  # FLOOR and hidden TRAP look identical
 
@@ -49,6 +53,10 @@ func _tile_color(tile: int) -> Color:
 			return COLOR_TRAP_SPENT
 		DungeonState.Tile.WALL:
 			return COLOR_WALL
+		DungeonState.Tile.WELL:
+			return Color(0.25, 0.5, 0.85)
+		DungeonState.Tile.ALTAR:
+			return Color(0.85, 0.7, 0.3)
 		_:
 			return COLOR_FLOOR
 
