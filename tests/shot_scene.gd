@@ -31,6 +31,10 @@ func _ready() -> void:
 		DungeonState.place_item(free[i], ItemDatabase.get_item(loot[i - ids.size()]))
 	game._refresh_vision()
 	p.take_damage(9)
+	if "--inventory" in OS.get_cmdline_user_args():
+		for id in ["flower_wine", "antidote_herb", "teleport_talisman", "dragon_armor"]:
+			GameState.add_item(ItemDatabase.get_item(id))
+		game.inventory_panel.show_panel()
 	for i in range(28):
 		await get_tree().process_frame
 	SaveManager.delete_save()

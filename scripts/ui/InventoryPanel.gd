@@ -75,7 +75,13 @@ func refresh() -> void:
 		var b := Button.new()
 		var qty: String = " x%d" % entry.quantity if entry.quantity > 1 else ""
 		b.text = "%s%s\n%s" % [item.get_display_name(known), qty, item.get_display_description(known)]
-		b.custom_minimum_size = Vector2(600, 80)
+		b.custom_minimum_size = Vector2(600, 84)
+		var icon: Texture2D = SpriteLibrary.get_item(item.id)
+		if icon != null:
+			b.icon = icon
+			b.expand_icon = true
+			b.add_theme_constant_override("icon_max_width", 56)
+			b.add_theme_constant_override("h_separation", 14)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.add_theme_font_size_override("font_size", 20)
 		b.pressed.connect(func(): item_chosen.emit(item))
