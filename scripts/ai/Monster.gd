@@ -8,6 +8,7 @@ extends Actor
 ## - AMBUSH: stays still until the player is within 2 tiles, then attacks like AGGRESSIVE.
 
 var data: MonsterData
+var _summoned: bool = false
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
@@ -108,3 +109,33 @@ func _try_special(target) -> void:
 		"stun":
 			target.apply_status("stun", Player.STUN_TURNS)
 			MessageBus.log_message("정신이 아찔하다! 잠시 움직일 수 없다.")
+
+func take_damage(amount: int) -> void:
+	super.take_damage(amount)
+	if is_alive and not _summoned and data.summon_fraction > 0.0 			and float(current_hp) / float(stats.max_hp) <= data.summon_fraction:
+		_summoned = true
+		_summon_minions()
+
+## Calls escorts onto free floor tiles around the boss (nearest rings first).
+func _summon_minions() -> void:
+	var pool: Array[MonsterData] = MonsterDatabase.get_monsters_for_floor(maxi(1, GameState.current_floor - 1))
+	if pool.is_empty() or get_parent() == null:
+		return
+	MessageBus.log_message("%s 수하를 불러냈다!" % Josa.i_ga(display_name))
+	AudioManager.play("skill")
+	var spawned: int = 0
+	for radius in range(1, 4):
+		for dx in range(-radius, radius + 1):
+			for dy in range(-radius, radius + 1):
+				if spawned >= data.summon_count:
+					return
+				var pos := grid_pos + Vector2i(dx, dy)
+				if DungeonState.tile_at(pos) != DungeonState.Tile.FLOOR or DungeonState.get_actor_at(pos) != null:
+					continue
+				var minion := Monster.new()
+				get_parent().add_child(minion)
+				minion.setup_from_data(pool[randi() % pool.size()])
+				minion.move_to_grid(pos)
+				minion.visible = DungeonState.visible_tiles.has(pos)
+				DungeonState.set_actor_at(pos, minion)
+				spawned += 1

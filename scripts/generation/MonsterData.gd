@@ -24,3 +24,6 @@ enum AIType { WANDER, AGGRESSIVE, RANGED, AMBUSH }
 ## On-hit status applied to the player: "", "poison" or "stun".
 @export var special: String = ""
 @export var special_chance: float = 0.3
+## Once, when HP falls to this fraction of max, summon summon_count minions (0 = never).
+@export var summon_fraction: float = 0.0
+@export var summon_count: int = 2

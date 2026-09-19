@@ -30,3 +30,5 @@ loot_chance = 0.4
 detect_radius = 5
 special = ""
 special_chance = 0.0
+summon_fraction = 0.0
+summon_count = 0

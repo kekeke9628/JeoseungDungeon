@@ -75,6 +75,7 @@ func _run() -> void:
 	await _test_tap_to_move()
 	await _test_status_effects()
 	await _test_review_regressions()
+	await _test_boss_summon()
 
 func _test_content() -> void:
 	print("[content]")
@@ -492,3 +493,19 @@ func _test_review_regressions() -> void:
 	var before: int = game._walk_token
 	game._on_wait_pressed()
 	check(game._walk_token == before + 1, "actions bump the walk token")
+
+func _test_boss_summon() -> void:
+	print("[boss summon]")
+	await _new_game("hwarang")
+	game._load_floor(10)
+	_god_mode()
+	var boss = _find_boss()
+	check(boss != null and boss.data.summon_fraction > 0.0, "floor-10 boss can summon")
+	var before: int = TurnManager.monsters.size()
+	boss.take_damage(int(boss.stats.max_hp * 0.3))
+	check(TurnManager.monsters.size() == before, "no summon while above the threshold")
+	boss.take_damage(int(boss.stats.max_hp * 0.3))
+	check(TurnManager.monsters.size() == before + boss.data.summon_count, "boss summons minions at the threshold (%d -> %d)" % [before, TurnManager.monsters.size()])
+	var after: int = TurnManager.monsters.size()
+	boss.take_damage(1)
+	check(TurnManager.monsters.size() == after, "boss only summons once")
