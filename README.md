@@ -28,7 +28,8 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 
 ### Phase 3 (진행 중)
 - 사운드: `python tools/gen_audio.py` 로 효과음 17종 + 음악 2곡(탐험/보스) 생성, 볼륨 설정 저장 (`AudioManager`, `SettingsManager`)
-- 설정 화면, 첫 실행 도움말, 메인 메뉴 상점
+- 설정 화면, 첫 실행 도움말, 메인 메뉴 상점, 기록(통계) 화면
+- 전투 피드백(피해 숫자, 피격 번쩍임, 화면 흔들림), 탭 이동(자동 걷기, 적이 보이면 한 칸씩)
 - 인앱결제 구조: `IAPManager` (부활 부적 소모성 / 후원자 팩 영구). 디버그 빌드에서만 모의 결제, 릴리스는 스토어 연결 전까지 구매 차단(안전장치)
 - 출시 준비: 앱 아이콘, Compatibility 렌더러(저사양 안드로이드 호환), 내보내기 프리셋 템플릿, `docs/RELEASE.md`, `docs/PRIVACY_POLICY.md`, `docs/STORE_LISTING.md`
 - 한글 폰트 번들: Noto Sans KR(OFL)을 KS X 1001 2,350자로 줄여(약 0.8MB) 기본 GUI 폰트로 사용 (`assets/fonts/`)
