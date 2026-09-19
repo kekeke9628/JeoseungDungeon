@@ -10,10 +10,7 @@ func _init() -> void:
 	visible = false
 	position = Vector2(30, 200)
 	size = Vector2(660, 800)
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.04, 0.08, 0.97)
-	bg.size = size
-	add_child(bg)
+	add_child(UITheme.make_panel(size))
 	_add_label("상점", Vector2(0, 20), Vector2(660, 60), 40)
 	_owned = _add_label("", Vector2(20, 90), Vector2(620, 40), 22)
 	var y: float = 150.0

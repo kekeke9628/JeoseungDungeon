@@ -17,6 +17,8 @@ var player_xp: int = 0
 var player_xp_to_next: int = 20
 var turn_count: int = 0
 var skill_cooldown_left: int = 0
+## What last hurt the player, shown on the game-over screen.
+var last_attacker: String = ""
 
 ## Set by the menu before Game.tscn loads; survive reset_run().
 var selected_class_id: String = "mudang"
@@ -37,6 +39,7 @@ func reset_run() -> void:
 	player_xp_to_next = 20
 	turn_count = 0
 	skill_cooldown_left = 0
+	last_attacker = ""
 	equipped_weapon = null
 	equipped_armor = null
 	inventory.clear()

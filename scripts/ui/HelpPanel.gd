@@ -11,10 +11,7 @@ func _init() -> void:
 	position = Vector2(30, 160)
 	size = Vector2(660, 900)
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.04, 0.08, 0.97)
-	bg.size = size
-	add_child(bg)
+	add_child(UITheme.make_panel(size))
 
 	var title := Label.new()
 	title.text = "도움말"
@@ -29,7 +26,7 @@ func _init() -> void:
 	body.position = Vector2(30, 100)
 	body.size = Vector2(600, 660)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_size_override("font_size", 24)
+	body.add_theme_font_size_override("font_size", 21)
 	add_child(body)
 
 	var close := Button.new()

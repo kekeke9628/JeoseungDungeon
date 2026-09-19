@@ -8,10 +8,7 @@ func _init() -> void:
 	visible = false
 	position = Vector2(30, 220)
 	size = Vector2(660, 760)
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.04, 0.08, 0.97)
-	bg.size = size
-	add_child(bg)
+	add_child(UITheme.make_panel(size))
 	var title := Label.new()
 	title.text = "저승 기록"
 	title.position = Vector2(0, 20)

@@ -87,6 +87,7 @@ func _check_trap(pos: Vector2i) -> void:
 			return
 	var dmg: int = TRAP_BASE_DAMAGE + GameState.current_floor
 	MessageBus.log_message("함정이다! 가시에 찔려 %d의 피해를 입었다." % dmg)
+	GameState.last_attacker = "함정"
 	take_damage(dmg)
 
 ## Active status effects: name -> turns left ("poison", "stun").
@@ -112,6 +113,7 @@ func tick_statuses() -> void:
 	if statuses.has("poison"):
 		var dmg: int = 1 + GameState.current_floor / 8
 		MessageBus.log_message("독이 온몸에 퍼져 %d의 피해를 입었다." % dmg)
+		GameState.last_attacker = "독"
 		take_damage(dmg)
 	for key in statuses.keys():
 		statuses[key] -= 1

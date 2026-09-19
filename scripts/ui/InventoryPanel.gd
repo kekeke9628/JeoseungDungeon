@@ -12,10 +12,7 @@ func _init() -> void:
 	position = Vector2(40, 100)
 	size = Vector2(640, 700)
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.04, 0.08, 0.95)
-	bg.size = size
-	add_child(bg)
+	add_child(UITheme.make_panel(size))
 
 	_title = Label.new()
 	_title.position = Vector2(20, 12)

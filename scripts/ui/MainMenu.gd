@@ -14,6 +14,7 @@ var _records_btn: Button
 func _ready() -> void:
 	position = Vector2.ZERO
 	size = Vector2(720, 1280)
+	theme = UITheme.get_theme()
 	var bg := ColorRect.new()
 	bg.color = Color(0.04, 0.03, 0.07)
 	bg.size = size
@@ -58,7 +59,9 @@ func _build_main_box() -> void:
 	_main_box = Control.new()
 	_main_box.size = size
 	add_child(_main_box)
-	_make_label("저승던전", Vector2(0, 260), Vector2(720, 100), 72, _main_box)
+	var title := _make_label("저승던전", Vector2(0, 260), Vector2(720, 100), 72, _main_box)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	_add_showcase()
 	_make_label("한국 설화 로그라이크", Vector2(0, 370), Vector2(720, 50), 28, _main_box)
 	var new_btn := _make_button("새 게임", Vector2(210, 560), Vector2(300, 90), 32, _main_box)
 	new_btn.pressed.connect(_show_classes)
@@ -126,3 +129,24 @@ func _continue_run(data: Dictionary) -> void:
 	GameState.selected_class_id = str(data.class_id)
 	GameState.pending_continue = true
 	get_tree().change_scene_to_file(GAME_SCENE)
+
+## A bobbing row of characters under the title.
+func _add_showcase() -> void:
+	var ids: Array[String] = ["mudang", "dokkaebi", "gumiho", "jeoseung_saja", "yeomra"]
+	var x0: float = (720.0 - ids.size() * 96.0) / 2.0
+	for i in range(ids.size()):
+		var tex: Texture2D = SpriteLibrary.get_actor(ids[i])
+		if tex == null:
+			continue
+		var r := TextureRect.new()
+		r.texture = tex
+		r.position = Vector2(x0 + i * 96.0 + 8.0, 450.0)
+		r.size = Vector2(80, 80)
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_main_box.add_child(r)
+		var tw := r.create_tween().set_loops()
+		var t: float = 0.55 + 0.08 * i
+		tw.tween_property(r, "position:y", 438.0, t).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(r, "position:y", 458.0, t).set_trans(Tween.TRANS_SINE)

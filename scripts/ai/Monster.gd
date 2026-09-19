@@ -71,6 +71,8 @@ func _attack(target) -> void:
 	AudioManager.play("hurt" if result.hit else "miss")
 	if result.hit:
 		MessageBus.log_message("%s %d의 피해를 입혔다!" % [Josa.i_ga(display_name), result.damage])
+		if target is Player:
+			GameState.last_attacker = display_name
 		_try_special(target)
 	else:
 		MessageBus.log_message("%s의 공격이 빗나갔다." % display_name)

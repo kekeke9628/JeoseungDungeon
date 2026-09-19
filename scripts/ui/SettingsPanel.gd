@@ -12,10 +12,7 @@ func _init() -> void:
 	position = Vector2(40, 300)
 	size = Vector2(640, 520)
 
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.04, 0.08, 0.97)
-	bg.size = size
-	add_child(bg)
+	add_child(UITheme.make_panel(size))
 
 	_add_label("설정", Vector2(0, 20), Vector2(640, 60), 40)
 	_add_label("효과음", Vector2(40, 130), Vector2(200, 50), 28)

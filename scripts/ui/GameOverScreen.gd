@@ -49,9 +49,16 @@ func _init() -> void:
 	btn.pressed.connect(func(): restart_pressed.emit())
 	add_child(btn)
 
-func show_result(victory: bool, floor_reached: int, level: int, turns: int, revive_count: int = 0) -> void:
+func show_result(victory: bool, floor_reached: int, level: int, turns: int, revive_count: int = 0, cause: String = "") -> void:
 	_revive_btn.visible = not victory and revive_count > 0
 	_revive_btn.text = "부활 부적 사용 (남은 %d개)" % revive_count
 	_title.text = "저승을 탈출했다!" if victory else "영혼이 저승에 묶였다..."
 	_detail.text = "도달: %d층  레벨: %d  턴: %d" % [floor_reached, level, turns]
+	if not victory and not cause.is_empty():
+		_detail.text += "\n%s" % _cause_text(cause)
 	visible = true
+
+func _cause_text(cause: String) -> String:
+	if cause == "독" or cause == "함정":
+		return "%s에 쓰러졌다." % cause
+	return "%s에게 쓰러졌다." % cause

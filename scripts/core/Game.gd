@@ -17,6 +17,7 @@ const SHAKE_STRENGTH: float = 8.0
 const SHAKE_TIME: float = 0.18
 const CAMERA_BASE_OFFSET := Vector2(0, 110)
 const WALK_STEP_DELAY: float = 0.08
+const FADE_TIME: float = 0.4
 
 var world: Node2D
 var floor_node: Node2D
@@ -35,6 +36,10 @@ var _ended: bool = false
 var _last_hp: int = 0
 var _run_recorded: bool = false
 var _walk_token: int = 0
+var _fade: ColorRect
+var _fade_tween: Tween
+var _seen_monsters: Dictionary = {}
+var _seen_species: Dictionary = {}
 
 func _ready() -> void:
 	randomize()
@@ -44,6 +49,7 @@ func _ready() -> void:
 		continuing = false
 	GameState.reset_run()
 	TurnManager.is_processing = false
+	_seen_species.clear()
 
 	world = Node2D.new()
 	add_child(world)
@@ -69,7 +75,17 @@ func _ready() -> void:
 		help_panel.show_panel()
 
 func _build_ui() -> void:
+	var fade_layer := CanvasLayer.new()
+	fade_layer.layer = 1
+	add_child(fade_layer)
+	_fade = ColorRect.new()
+	_fade.color = Color.BLACK
+	_fade.size = Vector2(720, 1280)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade.modulate.a = 0.0
+	fade_layer.add_child(_fade)
 	var layer := CanvasLayer.new()
+	layer.layer = 2
 	add_child(layer)
 	hud = HUD.new()
 	message_log = MessageLog.new()
@@ -80,6 +96,8 @@ func _build_ui() -> void:
 	help_panel = HelpPanel.new()
 	for c in [hud, message_log, dpad, inventory_panel, settings_panel, help_panel, game_over_screen]:
 		layer.add_child(c)
+	for c in [hud, message_log, dpad, inventory_panel, settings_panel, help_panel, game_over_screen]:
+		c.theme = UITheme.get_theme()
 	hud.inventory_pressed.connect(inventory_panel.toggle)
 	hud.settings_pressed.connect(settings_panel.show_panel)
 	help_panel.closed.connect(SettingsManager.mark_tutorial_seen)
@@ -157,7 +175,9 @@ func _load_floor(floor_num: int) -> void:
 	if floor_num > 1:
 		AudioManager.play("stairs")
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
+	_seen_monsters.clear()
 	_refresh_vision()
+	_fade_in()
 	SaveManager.save_run(player)
 	StatsManager.save_stats()
 
@@ -206,11 +226,33 @@ func _random_pos_in(room: Rect2i) -> Vector2i:
 		randi_range(room.position.x, room.position.x + room.size.x - 1),
 		randi_range(room.position.y, room.position.y + room.size.y - 1))
 
+func _fade_in() -> void:
+	if _fade_tween != null and _fade_tween.is_valid():
+		_fade_tween.kill()
+	_fade.modulate.a = 1.0
+	_fade_tween = _fade.create_tween()
+	_fade_tween.tween_property(_fade, "modulate:a", 0.0, FADE_TIME)
+
 func _refresh_vision() -> void:
 	DungeonState.compute_fov(player.grid_pos, Constants.VISION_RADIUS)
 	for m in TurnManager.monsters:
-		if is_instance_valid(m):
-			m.visible = DungeonState.visible_tiles.has(m.grid_pos)
+		if not is_instance_valid(m):
+			continue
+		m.visible = DungeonState.visible_tiles.has(m.grid_pos)
+		if m.visible:
+			_announce_monster(m)
+
+## Logs a monster the first time it is seen on a floor, with a short lore line
+## the first time its species is met in a run.
+func _announce_monster(m: Monster) -> void:
+	var id: int = m.get_instance_id()
+	if _seen_monsters.has(id):
+		return
+	_seen_monsters[id] = true
+	MessageBus.log_message("%s 나타났다!" % Josa.i_ga(m.display_name))
+	if not _seen_species.has(m.data.id):
+		_seen_species[m.data.id] = true
+		MessageBus.log_message("  %s" % m.data.description)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -368,7 +410,7 @@ func _on_game_over(victory: bool) -> void:
 	_ended = true
 	AudioManager.stop_music()
 	AudioManager.play("victory" if victory else "defeat")
-	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens)
+	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens, GameState.last_attacker)
 	if victory or IAPManager.revive_tokens <= 0:
 		_finish_run(victory)
 

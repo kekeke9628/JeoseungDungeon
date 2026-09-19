@@ -76,6 +76,7 @@ func _run() -> void:
 	await _test_status_effects()
 	await _test_review_regressions()
 	await _test_boss_summon()
+	await _test_polish()
 
 func _test_content() -> void:
 	print("[content]")
@@ -509,3 +510,28 @@ func _test_boss_summon() -> void:
 	var after: int = TurnManager.monsters.size()
 	boss.take_damage(1)
 	check(TurnManager.monsters.size() == after, "boss only summons once")
+
+func _test_polish() -> void:
+	print("[polish]")
+	await _new_game("mudang")
+	var lines: Array[String] = []
+	MessageBus.message_logged.connect(func(text): lines.append(text))
+	_clear_monsters()
+	DungeonState.actors_at.clear()
+	DungeonState.actors_at[game.player.grid_pos] = game.player
+	var spot: Vector2i = _adjacent_free_tile(game.player.grid_pos)
+	game._spawn_monster_at(MonsterDatabase.get_monster("mongdal"), spot)
+	game._refresh_vision()
+	var appeared: bool = lines.any(func(l): return l.contains("나타났다"))
+	check(appeared, "a newly seen monster is announced")
+	var announced: int = lines.size()
+	game._refresh_vision()
+	check(lines.size() == announced, "a monster is announced only once")
+
+	GameState.last_attacker = "도깨비"
+	game.game_over_screen.show_result(false, 3, 2, 50, 0, GameState.last_attacker)
+	check(game.game_over_screen._detail.text.contains("도깨비에게 쓰러졌다"), "game over screen names the killer")
+	game.game_over_screen.show_result(false, 3, 2, 50, 0, "독")
+	check(game.game_over_screen._detail.text.contains("독에 쓰러졌다"), "poison death is described")
+	game._fade_in()
+	check(game._fade.modulate.a == 1.0, "floor fade starts opaque")
