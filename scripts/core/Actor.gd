@@ -10,6 +10,12 @@ signal died(actor)
 signal hp_changed(current: int, max_hp: int)
 
 const HP_BAR_HEIGHT: int = 5
+const POPUP_RISE: float = 36.0
+const POPUP_TIME: float = 0.7
+const FLASH_TIME: float = 0.18
+const COLOR_DAMAGE_PLAYER := Color(1.0, 0.35, 0.3)
+const COLOR_DAMAGE_MONSTER := Color(1.0, 0.95, 0.6)
+const COLOR_HEAL := Color(0.4, 1.0, 0.5)
 
 var stats: ActorStats
 var current_hp: int = 1
@@ -77,6 +83,8 @@ func take_damage(amount: int) -> void:
 		return
 	current_hp = max(0, current_hp - amount)
 	_update_hp_bar()
+	_show_popup(str(amount), COLOR_DAMAGE_PLAYER if self is Player else COLOR_DAMAGE_MONSTER)
+	_flash()
 	hp_changed.emit(current_hp, stats.max_hp)
 	if current_hp <= 0:
 		die()
@@ -86,6 +94,7 @@ func heal(amount: int) -> void:
 		return
 	current_hp = min(stats.max_hp, current_hp + amount)
 	_update_hp_bar()
+	_show_popup("+%d" % amount, COLOR_HEAL)
 	hp_changed.emit(current_hp, stats.max_hp)
 
 func die() -> void:
@@ -96,3 +105,33 @@ func die() -> void:
 func _update_hp_bar() -> void:
 	var ratio: float = float(current_hp) / float(maxi(1, stats.max_hp))
 	hp_bar.size.x = (Constants.TILE_SIZE - 6) * clampf(ratio, 0.0, 1.0)
+
+## Floating combat number. Skipped for actors the player cannot see.
+func _show_popup(text: String, color: Color) -> void:
+	if not is_inside_tree() or not visible:
+		return
+	var parent := get_parent()
+	if parent == null:
+		return
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 24)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	l.add_theme_constant_override("outline_size", 6)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.position = position + Vector2(Constants.TILE_SIZE * 0.25, -4)
+	l.z_index = 10
+	parent.add_child(l)
+	var tw := l.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y - POPUP_RISE, POPUP_TIME)
+	tw.tween_property(l, "modulate:a", 0.0, POPUP_TIME)
+	tw.chain().tween_callback(l.queue_free)
+
+func _flash() -> void:
+	if not is_inside_tree() or not visible or not sprite.visible:
+		return
+	sprite.modulate = Color(1.0, 0.4, 0.4)
+	var tw := create_tween()
+	tw.tween_property(sprite, "modulate", Color.WHITE, FLASH_TIME)

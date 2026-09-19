@@ -13,6 +13,9 @@ const GOLD_CHANCE: float = 0.4
 const HP_PER_LEVEL: int = 7
 const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
 const REVIVE_HP_FRACTION: float = 0.5
+const SHAKE_STRENGTH: float = 8.0
+const SHAKE_TIME: float = 0.18
+const CAMERA_BASE_OFFSET := Vector2(0, 110)
 
 var world: Node2D
 var floor_node: Node2D
@@ -28,6 +31,7 @@ var settings_panel: SettingsPanel
 var help_panel: HelpPanel
 
 var _ended: bool = false
+var _last_hp: int = 0
 
 func _ready() -> void:
 	randomize()
@@ -56,6 +60,7 @@ func _ready() -> void:
 	hud.set_level(GameState.player_level, GameState.player_xp, GameState.player_xp_to_next)
 	hud.set_gold(GameState.gold)
 	hud.set_hp(player.current_hp, player.stats.max_hp)
+	_last_hp = player.current_hp
 	_update_skill_button()
 	if not SettingsManager.tutorial_seen:
 		help_panel.show_panel()
@@ -89,11 +94,12 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	world.add_child(player)
 	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
 	player.hp_changed.connect(hud.set_hp)
+	player.hp_changed.connect(_on_player_hp_changed)
 	if IAPManager.supporter:
 		player.visual.color = SUPPORTER_GLOW
 
 	camera = Camera2D.new()
-	camera.offset = Vector2(0, 110)
+	camera.offset = CAMERA_BASE_OFFSET
 	player.add_child(camera)
 	camera.position = Vector2(Constants.TILE_SIZE / 2.0, Constants.TILE_SIZE / 2.0)
 	camera.make_current()
@@ -264,6 +270,15 @@ func _update_skill_button() -> void:
 	var c: CharacterClassData = GameState.player_class
 	if c:
 		dpad.set_skill(c.skill_name, GameState.skill_cooldown_left)
+
+func _on_player_hp_changed(current: int, _max_hp: int) -> void:
+	if current < _last_hp and is_instance_valid(camera):
+		var tw := camera.create_tween()
+		for i in range(3):
+			var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * SHAKE_STRENGTH
+			tw.tween_property(camera, "offset", CAMERA_BASE_OFFSET + jitter, SHAKE_TIME / 4.0)
+		tw.tween_property(camera, "offset", CAMERA_BASE_OFFSET, SHAKE_TIME / 4.0)
+	_last_hp = current
 
 func _on_leveled_up(new_level: int) -> void:
 	if not is_instance_valid(player):

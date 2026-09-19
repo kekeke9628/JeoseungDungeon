@@ -124,6 +124,9 @@ func _test_items() -> void:
 	await _new_game("mudang")
 	_god_mode()
 	var p: Player = game.player
+	var children_before: int = game.world.get_child_count()
+	p.take_damage(1)
+	check(game.world.get_child_count() == children_before + 1, "damage popup is spawned")
 	var saved: Array = _clear_monsters()
 	check(not ItemEffects.use_item(ItemDatabase.get_item("talisman"), p), "talisman with no target consumes nothing")
 	TurnManager.monsters.append_array(saved)
