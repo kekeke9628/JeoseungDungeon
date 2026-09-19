@@ -128,6 +128,9 @@ func _load_floor(floor_num: int) -> void:
 	if floor_node:
 		floor_node.queue_free()
 	DungeonState.clear()
+	for old_monster in TurnManager.monsters:
+		if is_instance_valid(old_monster):
+			old_monster.queue_free()
 	TurnManager.monsters.clear()
 
 	var result: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, floor_num)
@@ -156,6 +159,7 @@ func _load_floor(floor_num: int) -> void:
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
 	_refresh_vision()
 	SaveManager.save_run(player)
+	StatsManager.save_stats()
 
 func _spawn_monsters(floor_num: int, rooms: Array[Rect2i], stairs_pos: Vector2i) -> void:
 	var boss: MonsterData = MonsterDatabase.get_boss_for_floor(floor_num)
@@ -261,7 +265,10 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 	for i in range(1, path.size()):
 		if token != _walk_token or not _can_act() or GameState.current_floor != floor_at_start:
 			return
-		if player.has_status("stun") or not player.try_move(path[i] - player.grid_pos):
+		var step: Vector2i = path[i] - player.grid_pos
+		if absi(step.x) + absi(step.y) != 1:
+			return  # displaced (trap teleport etc.): abandon the route
+		if player.has_status("stun") or not player.try_move(step):
 			return
 		_after_player_action()
 		if seen_at_start > 0:
@@ -288,17 +295,20 @@ func _modal_open() -> bool:
 	return inventory_panel.visible or settings_panel.visible or help_panel.visible
 
 func _on_direction_pressed(dir: Vector2i) -> void:
+	_walk_token += 1
 	if not _can_act() or _guard_stun():
 		return
 	if player.try_move(dir):
 		_after_player_action()
 
 func _on_wait_pressed() -> void:
+	_walk_token += 1
 	if _can_act() and not _guard_stun():
 		player.wait_turn()
 		_after_player_action()
 
 func _on_skill_pressed() -> void:
+	_walk_token += 1
 	if not _can_act() or _guard_stun():
 		return
 	if GameState.skill_cooldown_left > 0:
@@ -312,6 +322,7 @@ func _on_skill_pressed() -> void:
 		_after_player_action()
 
 func _on_item_chosen(item: ItemData) -> void:
+	_walk_token += 1
 	if _ended or not is_instance_valid(player) or not player.is_alive or _guard_stun():
 		return
 	if ItemEffects.use_item(item, player):
@@ -352,8 +363,9 @@ func _on_leveled_up(new_level: int) -> void:
 	AudioManager.play("levelup")
 
 func _on_game_over(victory: bool) -> void:
+	if _ended:
+		return
 	_ended = true
-	SaveManager.delete_save()
 	AudioManager.stop_music()
 	AudioManager.play("victory" if victory else "defeat")
 	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens)
@@ -378,6 +390,7 @@ func _finish_run(victory: bool) -> void:
 	if _run_recorded:
 		return
 	_run_recorded = true
+	SaveManager.delete_save()
 	StatsManager.record_run_end(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, GameState.player_class.display_name)
 
 func _on_restart() -> void:

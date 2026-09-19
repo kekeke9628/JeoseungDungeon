@@ -31,7 +31,7 @@ func end_player_turn() -> void:
 	if GameState.skill_cooldown_left > 0:
 		GameState.skill_cooldown_left -= 1
 		GameState.skill_changed.emit()
-	if player != null and player.is_alive and GameState.turn_count % REGEN_INTERVAL == 0:
+	if player != null and player.is_alive and GameState.turn_count % REGEN_INTERVAL == 0 and player.current_hp < player.stats.max_hp:
 		player.heal(1)
 	# Snapshot so a monster dying mid-loop (removed via unregister_monster)
 	# doesn't shift indices out from under the iteration.

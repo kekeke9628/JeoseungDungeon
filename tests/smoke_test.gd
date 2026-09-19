@@ -74,6 +74,7 @@ func _run() -> void:
 	await _test_stats()
 	await _test_tap_to_move()
 	await _test_status_effects()
+	await _test_review_regressions()
 
 func _test_content() -> void:
 	print("[content]")
@@ -300,6 +301,7 @@ func _test_save_load() -> void:
 	GameState.skill_cooldown_left = 4
 	game.player.current_hp = 11
 	GameState.identify("talisman")
+	game.player.apply_status("poison", 3)
 	SaveManager.save_run(game.player)
 	check(SaveManager.has_save(), "save file written")
 	var inv_count: int = GameState.inventory.size()
@@ -316,6 +318,7 @@ func _test_save_load() -> void:
 	check(game.player.current_hp == 11, "continue restores current hp")
 	check(GameState.skill_cooldown_left == 4, "continue restores skill cooldown")
 	check(GameState.is_identified("talisman"), "continue restores identification")
+	check(game.player.has_status("poison") and int(game.player.statuses["poison"]) == 3, "continue restores status effects")
 	SaveManager.delete_save()
 	check(not SaveManager.has_save(), "delete_save removes the file")
 
@@ -410,7 +413,8 @@ func _test_tap_to_move() -> void:
 	check(target.x >= 0, "found a distant reachable tile")
 	var trap_free: bool = true
 	for step in Pathfinder.find_path(p.grid_pos, target):
-		if DungeonState.tile_at(step) == DungeonState.Tile.TRAP:
+		var tile: int = DungeonState.tile_at(step)
+		if tile == DungeonState.Tile.TRAP or tile == DungeonState.Tile.STAIRS_DOWN:
 			trap_free = false
 	if trap_free:
 		_god_mode()
@@ -451,3 +455,40 @@ func _test_status_effects() -> void:
 	mon._try_special(p)
 	check(p.has_status("poison"), "monster special applies poison to the player")
 	p.cure_status("poison")
+
+func _monster_children() -> int:
+	var n: int = 0
+	for c in game.world.get_children():
+		if c is Monster:
+			n += 1
+	return n
+
+func _test_review_regressions() -> void:
+	print("[review regressions]")
+	IAPManager.reset_for_tests()
+	await _new_game("hwarang")
+	game._load_floor(2)
+	await get_tree().process_frame
+	check(_monster_children() == TurnManager.monsters.size(), "old floor monsters are freed (%d nodes vs %d tracked)" % [_monster_children(), TurnManager.monsters.size()])
+
+	# a second game over after victory must not replace the result or offer a revive
+	IAPManager.revive_tokens = 1
+	GameState.game_over.emit(true)
+	GameState.game_over.emit(false)
+	check(not game.game_over_screen._revive_btn.visible, "defeat after victory does not offer revive")
+	IAPManager.reset_for_tests()
+
+	# a revivable defeat keeps the save until the run is finished
+	await _new_game("dosa")
+	IAPManager.revive_tokens = 1
+	game.player.take_damage(999999)
+	check(SaveManager.has_save(), "save survives a revivable defeat")
+	game._finish_run(false)
+	check(not SaveManager.has_save(), "finishing the run deletes the save")
+	IAPManager.reset_for_tests()
+
+	# any other action cancels an in-flight tap walk
+	await _new_game("mudang")
+	var before: int = game._walk_token
+	game._on_wait_pressed()
+	check(game._walk_token == before + 1, "actions bump the walk token")
