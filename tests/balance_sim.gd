@@ -11,6 +11,8 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), 
 var game: Node2D
 
 func _ready() -> void:
+	SettingsManager.settings_path = "user://test_settings.cfg"
+	SettingsManager.tutorial_seen = true
 	SaveManager.save_path = "user://sim_save.json"
 	var total_wins: int = 0
 	var total_runs: int = 0

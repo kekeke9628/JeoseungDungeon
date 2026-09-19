@@ -5,14 +5,21 @@ class_name ItemEffects
 const TALISMAN_RANGE: int = 6
 
 static func use_item(item: ItemData, player: Player) -> bool:
+	var used: bool = false
+	var sfx: String = ""
 	match item.item_type:
 		ItemData.ItemType.POTION:
-			return _drink(item, player)
+			used = _drink(item, player)
+			sfx = "potion"
 		ItemData.ItemType.SCROLL:
-			return _read(item, player)
+			used = _read(item, player)
+			sfx = "scroll"
 		ItemData.ItemType.WEAPON, ItemData.ItemType.ARMOR:
-			return _equip(item, player)
-	return false
+			used = _equip(item, player)
+			sfx = "equip"
+	if used:
+		AudioManager.play(sfx)
+	return used
 
 static func _drink(item: ItemData, player: Player) -> bool:
 	GameState.identify(item.id)

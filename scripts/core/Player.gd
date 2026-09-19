@@ -36,6 +36,7 @@ func die() -> void:
 	super.die()
 
 func _log_attack_result(result: Dictionary, target) -> void:
+	AudioManager.play("hit" if result.hit else "miss")
 	if result.hit:
 		var msg: String = "%s에게 %d의 피해를 입혔다!" % [target.display_name, result.damage]
 		if result.defender_died:
@@ -48,16 +49,19 @@ func _check_pickup(pos: Vector2i) -> void:
 	var item: ItemData = DungeonState.take_item_at(pos)
 	if item:
 		GameState.add_item(item)
+		AudioManager.play("pickup")
 		MessageBus.log_message("%s 주웠다." % Josa.eul_reul(item.get_display_name(GameState.is_identified(item.id))))
 	var gold: int = DungeonState.take_gold_at(pos)
 	if gold > 0:
 		GameState.add_gold(gold)
+		AudioManager.play("gold")
 		MessageBus.log_message("저승길 동전 %d개를 주웠다." % gold)
 
 func _check_trap(pos: Vector2i) -> void:
 	if DungeonState.tile_at(pos) != DungeonState.Tile.TRAP:
 		return
 	DungeonState.set_tile(pos, DungeonState.Tile.TRAP_SPENT)
+	AudioManager.play("trap")
 	if randf() < TELEPORT_TRAP_CHANCE:
 		var dest: Vector2i = DungeonState.random_free_floor_tile()
 		if dest.x >= 0:

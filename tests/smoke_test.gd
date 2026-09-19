@@ -15,6 +15,8 @@ func check(cond: bool, msg: String) -> void:
 
 func _ready() -> void:
 	seed(12345)
+	SettingsManager.settings_path = "user://test_settings.cfg"
+	SettingsManager.tutorial_seen = true
 	SaveManager.save_path = "user://test_save.json"
 	await _run()
 	SaveManager.delete_save()

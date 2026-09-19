@@ -62,6 +62,7 @@ func move_actor(actor, from_pos: Vector2i, to_pos: Vector2i) -> void:
 	actors_at[to_pos] = actor
 	actor.move_to_grid(to_pos)
 	if tile_at(to_pos) == Tile.DOOR:
+		AudioManager.play("door")
 		set_tile(to_pos, Tile.FLOOR)
 
 func place_item(pos: Vector2i, item: ItemData) -> void:

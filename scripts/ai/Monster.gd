@@ -63,6 +63,7 @@ func die() -> void:
 
 func _attack(target) -> void:
 	var result := CombatSystem.resolve_attack(self, target)
+	AudioManager.play("hurt" if result.hit else "miss")
 	if result.hit:
 		MessageBus.log_message("%s %d의 피해를 입혔다!" % [Josa.i_ga(display_name), result.damage])
 	else:

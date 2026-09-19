@@ -15,6 +15,8 @@ config/features=PackedStringArray("4.3", "Mobile")
 
 Constants="*res://scripts/core/Constants.gd"
 MessageBus="*res://autoloads/MessageBus.gd"
+SettingsManager="*res://autoloads/SettingsManager.gd"
+AudioManager="*res://autoloads/AudioManager.gd"
 GameState="*res://autoloads/GameState.gd"
 SaveManager="*res://autoloads/SaveManager.gd"
 ItemDatabase="*res://autoloads/ItemDatabase.gd"

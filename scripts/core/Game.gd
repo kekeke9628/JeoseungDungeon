@@ -22,6 +22,8 @@ var message_log: MessageLog
 var dpad: DPad
 var inventory_panel: InventoryPanel
 var game_over_screen: GameOverScreen
+var settings_panel: SettingsPanel
+var help_panel: HelpPanel
 
 var _ended: bool = false
 
@@ -53,6 +55,8 @@ func _ready() -> void:
 	hud.set_gold(GameState.gold)
 	hud.set_hp(player.current_hp, player.stats.max_hp)
 	_update_skill_button()
+	if not SettingsManager.tutorial_seen:
+		help_panel.show_panel()
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -62,9 +66,13 @@ func _build_ui() -> void:
 	dpad = DPad.new()
 	inventory_panel = InventoryPanel.new()
 	game_over_screen = GameOverScreen.new()
-	for c in [hud, message_log, dpad, inventory_panel, game_over_screen]:
+	settings_panel = SettingsPanel.new()
+	help_panel = HelpPanel.new()
+	for c in [hud, message_log, dpad, inventory_panel, settings_panel, help_panel, game_over_screen]:
 		layer.add_child(c)
 	hud.inventory_pressed.connect(inventory_panel.toggle)
+	hud.settings_pressed.connect(settings_panel.show_panel)
+	help_panel.closed.connect(SettingsManager.mark_tutorial_seen)
 	dpad.direction_pressed.connect(_on_direction_pressed)
 	dpad.wait_pressed.connect(_on_wait_pressed)
 	dpad.skill_pressed.connect(_on_skill_pressed)
@@ -124,6 +132,9 @@ func _load_floor(floor_num: int) -> void:
 	GameState.current_floor = floor_num
 	hud.set_floor(floor_num)
 	MessageBus.log_message("저승 %d층에 발을 들였다..." % floor_num)
+	if floor_num > 1:
+		AudioManager.play("stairs")
+	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
 	_refresh_vision()
 	SaveManager.save_run(player)
 
@@ -198,7 +209,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			inventory_panel.toggle()
 
 func _can_act() -> bool:
-	return not _ended and is_instance_valid(player) and player.is_alive and not inventory_panel.visible
+	return not _ended and is_instance_valid(player) and player.is_alive and not _modal_open()
+
+func _modal_open() -> bool:
+	return inventory_panel.visible or settings_panel.visible or help_panel.visible
 
 func _on_direction_pressed(dir: Vector2i) -> void:
 	if _can_act() and player.try_move(dir):
@@ -217,6 +231,7 @@ func _on_skill_pressed() -> void:
 		return
 	var c: CharacterClassData = GameState.player_class
 	if SkillEffects.use(c.skill_id, player):
+		AudioManager.play("skill")
 		GameState.skill_cooldown_left = c.skill_cooldown + 1
 		TurnManager.end_player_turn()
 		_after_player_action()
@@ -250,10 +265,13 @@ func _on_leveled_up(new_level: int) -> void:
 		player.stats.attack_min += 1
 	player.heal(HP_PER_LEVEL)
 	MessageBus.log_message("레벨 %d 달성! 몸에 힘이 차오른다." % new_level)
+	AudioManager.play("levelup")
 
 func _on_game_over(victory: bool) -> void:
 	_ended = true
 	SaveManager.delete_save()
+	AudioManager.stop_music()
+	AudioManager.play("victory" if victory else "defeat")
 	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count)
 
 func _on_restart() -> void:

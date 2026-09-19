@@ -4,6 +4,7 @@ extends Control
 ## Built in code; fixed layout for the 720x1280 portrait viewport.
 
 signal inventory_pressed
+signal settings_pressed
 
 var _label: Label
 
@@ -20,7 +21,7 @@ func _init() -> void:
 
 	_label = Label.new()
 	_label.position = Vector2(16, 8)
-	_label.size = Vector2(560, 54)
+	_label.size = Vector2(440, 54)
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_label.add_theme_font_size_override("font_size", 22)
 	add_child(_label)
@@ -32,6 +33,14 @@ func _init() -> void:
 	btn.add_theme_font_size_override("font_size", 24)
 	btn.pressed.connect(func(): inventory_pressed.emit())
 	add_child(btn)
+
+	var gear := Button.new()
+	gear.text = "설정"
+	gear.position = Vector2(462, 10)
+	gear.size = Vector2(116, 50)
+	gear.add_theme_font_size_override("font_size", 24)
+	gear.pressed.connect(func(): settings_pressed.emit())
+	add_child(gear)
 
 var _floor: int = 1
 var _hp: int = 0
