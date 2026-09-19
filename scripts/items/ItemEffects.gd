@@ -27,6 +27,9 @@ static func _drink(item: ItemData, player: Player) -> bool:
 	if item.value_b > 0:
 		player.stats.max_hp += item.value_b
 		MessageBus.log_message("최대 체력이 %d 늘어났다!" % item.value_b)
+	if item.id == "antidote_herb":
+		player.cure_status("poison")
+		MessageBus.log_message("독기가 가셨다.")
 	player.heal(item.value_a)
 	MessageBus.log_message("%s 마셨다. 체력이 %d 회복됐다." % [Josa.eul_reul(item.identified_name), item.value_a])
 	return true

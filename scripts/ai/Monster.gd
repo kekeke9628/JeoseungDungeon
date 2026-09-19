@@ -67,6 +67,7 @@ func _attack(target) -> void:
 	AudioManager.play("hurt" if result.hit else "miss")
 	if result.hit:
 		MessageBus.log_message("%s %d의 피해를 입혔다!" % [Josa.i_ga(display_name), result.damage])
+		_try_special(target)
 	else:
 		MessageBus.log_message("%s의 공격이 빗나갔다." % display_name)
 
@@ -94,3 +95,16 @@ func _move_random() -> void:
 
 func _chebyshev_distance(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+func _try_special(target) -> void:
+	if data.special.is_empty() or not (target is Player) or not target.is_alive:
+		return
+	if randf() >= data.special_chance:
+		return
+	match data.special:
+		"poison":
+			target.apply_status("poison", Player.POISON_TURNS)
+			MessageBus.log_message("독에 중독됐다!")
+		"stun":
+			target.apply_status("stun", Player.STUN_TURNS)
+			MessageBus.log_message("정신이 아찔하다! 잠시 움직일 수 없다.")

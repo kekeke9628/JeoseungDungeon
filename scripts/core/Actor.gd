@@ -134,4 +134,8 @@ func _flash() -> void:
 		return
 	sprite.modulate = Color(1.0, 0.4, 0.4)
 	var tw := create_tween()
-	tw.tween_property(sprite, "modulate", Color.WHITE, FLASH_TIME)
+	tw.tween_property(sprite, "modulate", _rest_tint(), FLASH_TIME)
+
+## Sprite color when not flashing; subclasses override (e.g. status tints).
+func _rest_tint() -> Color:
+	return Color.WHITE

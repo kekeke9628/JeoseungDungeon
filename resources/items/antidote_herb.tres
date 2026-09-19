@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "antidote_herb"
+item_type = 2
+identified_name = "해독초"
+unidentified_name = "이름 모를 풀"
+description = "쓴 냄새가 나는 풀."
+identified_description = "해독초. 중독을 치료하고 체력을 5 회복한다."
+stackable = true
+is_cursed = false
+min_floor = 3
+value_a = 5
+value_b = 0
+gold_value = 10

@@ -49,6 +49,7 @@ var _level: int = 1
 var _xp: int = 0
 var _xp_next: int = 20
 var _gold: int = 0
+var _status: String = ""
 
 func set_floor(v: int) -> void:
 	_floor = v
@@ -69,5 +70,11 @@ func set_gold(v: int) -> void:
 	_gold = v
 	_refresh()
 
+func set_status(text: String) -> void:
+	_status = text
+	_refresh()
+
 func _refresh() -> void:
 	_label.text = "저승 %d층  HP %d/%d\nLv %d (%d/%d)  엽전 %d" % [_floor, _hp, _max_hp, _level, _xp, _xp_next, _gold]
+	if not _status.is_empty():
+		_label.text += "  [%s]" % _status

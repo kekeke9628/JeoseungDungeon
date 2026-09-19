@@ -10,7 +10,7 @@ const BOSS_ESCORTS: int = 3
 const LOOT_PER_FLOOR_MIN: int = 4
 const LOOT_PER_FLOOR_MAX: int = 6
 const GOLD_CHANCE: float = 0.4
-const HP_PER_LEVEL: int = 7
+const HP_PER_LEVEL: int = 9
 const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
 const REVIVE_HP_FRACTION: float = 0.5
 const SHAKE_STRENGTH: float = 8.0
@@ -98,6 +98,7 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
 	player.hp_changed.connect(hud.set_hp)
 	player.hp_changed.connect(_on_player_hp_changed)
+	player.status_changed.connect(func(): hud.set_status(player.status_text()))
 	if IAPManager.supporter:
 		player.visual.color = SUPPORTER_GLOW
 
@@ -236,6 +237,8 @@ func _on_map_tapped(cell: Vector2i) -> void:
 	_walk_token += 1
 	if not _can_act():
 		return
+	if _guard_stun():
+		return
 	if cell == player.grid_pos:
 		_on_wait_pressed()
 		return
@@ -258,7 +261,7 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 	for i in range(1, path.size()):
 		if token != _walk_token or not _can_act() or GameState.current_floor != floor_at_start:
 			return
-		if not player.try_move(path[i] - player.grid_pos):
+		if player.has_status("stun") or not player.try_move(path[i] - player.grid_pos):
 			return
 		_after_player_action()
 		if seen_at_start > 0:
@@ -269,6 +272,15 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 			return
 		await get_tree().create_timer(WALK_STEP_DELAY).timeout
 
+## A stunned player loses the action: the turn passes and the stun ticks down.
+func _guard_stun() -> bool:
+	if not player.has_status("stun"):
+		return false
+	MessageBus.log_message("기절해서 움직일 수 없다!")
+	TurnManager.end_player_turn()
+	_after_player_action()
+	return true
+
 func _can_act() -> bool:
 	return not _ended and is_instance_valid(player) and player.is_alive and not _modal_open()
 
@@ -276,16 +288,18 @@ func _modal_open() -> bool:
 	return inventory_panel.visible or settings_panel.visible or help_panel.visible
 
 func _on_direction_pressed(dir: Vector2i) -> void:
-	if _can_act() and player.try_move(dir):
+	if not _can_act() or _guard_stun():
+		return
+	if player.try_move(dir):
 		_after_player_action()
 
 func _on_wait_pressed() -> void:
-	if _can_act():
+	if _can_act() and not _guard_stun():
 		player.wait_turn()
 		_after_player_action()
 
 func _on_skill_pressed() -> void:
-	if not _can_act():
+	if not _can_act() or _guard_stun():
 		return
 	if GameState.skill_cooldown_left > 0:
 		MessageBus.log_message("아직 기술을 쓸 수 없다. (%d턴)" % GameState.skill_cooldown_left)
@@ -298,7 +312,7 @@ func _on_skill_pressed() -> void:
 		_after_player_action()
 
 func _on_item_chosen(item: ItemData) -> void:
-	if _ended or not is_instance_valid(player) or not player.is_alive:
+	if _ended or not is_instance_valid(player) or not player.is_alive or _guard_stun():
 		return
 	if ItemEffects.use_item(item, player):
 		TurnManager.end_player_turn()

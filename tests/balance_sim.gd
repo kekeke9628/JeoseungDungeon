@@ -78,6 +78,10 @@ func _has(id: String) -> ItemData:
 
 func _use_consumables(p) -> bool:
 	var hp_ratio: float = float(p.current_hp) / float(p.stats.max_hp)
+	var herb: ItemData = _has("antidote_herb")
+	if herb and p.has_status("poison"):
+		game._on_item_chosen(herb)
+		return true
 	var elixir: ItemData = _has("elixir")
 	if elixir:
 		game._on_item_chosen(elixir)

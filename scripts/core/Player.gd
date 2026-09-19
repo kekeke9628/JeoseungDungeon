@@ -3,6 +3,10 @@ extends Actor
 ## Player-controlled actor. Movement/attack/wait are invoked by Game.gd in
 ## response to input; this class only resolves the consequences of one action.
 
+signal status_changed
+
+const POISON_TURNS: int = 4
+const STUN_TURNS: int = 1
 const TRAP_BASE_DAMAGE: int = 4
 const TELEPORT_TRAP_CHANCE: float = 0.4
 
@@ -41,6 +45,9 @@ func die() -> void:
 func revive(hp_fraction: float) -> void:
 	is_alive = true
 	modulate = Color.WHITE
+	statuses.clear()
+	sprite.modulate = Color.WHITE
+	status_changed.emit()
 	current_hp = maxi(1, int(stats.max_hp * hp_fraction))
 	_update_hp_bar()
 	hp_changed.emit(current_hp, stats.max_hp)
@@ -81,3 +88,48 @@ func _check_trap(pos: Vector2i) -> void:
 	var dmg: int = TRAP_BASE_DAMAGE + GameState.current_floor
 	MessageBus.log_message("함정이다! 가시에 찔려 %d의 피해를 입었다." % dmg)
 	take_damage(dmg)
+
+## Active status effects: name -> turns left ("poison", "stun").
+var statuses: Dictionary = {}
+
+func has_status(status_name: String) -> bool:
+	return statuses.has(status_name)
+
+func apply_status(status_name: String, turns: int) -> void:
+	statuses[status_name] = maxi(int(statuses.get(status_name, 0)), turns)
+	sprite.modulate = _rest_tint()
+	status_changed.emit()
+
+func cure_status(status_name: String) -> void:
+	if statuses.erase(status_name):
+		sprite.modulate = _rest_tint()
+		status_changed.emit()
+
+## Called once per player turn: poison hurts, then all timers count down.
+func tick_statuses() -> void:
+	if statuses.is_empty():
+		return
+	if statuses.has("poison"):
+		var dmg: int = 1 + GameState.current_floor / 8
+		MessageBus.log_message("독이 온몸에 퍼져 %d의 피해를 입었다." % dmg)
+		take_damage(dmg)
+	for key in statuses.keys():
+		statuses[key] -= 1
+		if statuses[key] <= 0:
+			statuses.erase(key)
+	sprite.modulate = _rest_tint()
+	status_changed.emit()
+
+func status_text() -> String:
+	var names := {"poison": "독", "stun": "기절"}
+	var parts: Array[String] = []
+	for key in statuses.keys():
+		parts.append("%s %d" % [names.get(key, key), statuses[key]])
+	return " ".join(parts)
+
+func _rest_tint() -> Color:
+	if statuses.has("poison"):
+		return Color(0.6, 1.0, 0.6)
+	if statuses.has("stun"):
+		return Color(1.0, 1.0, 0.6)
+	return Color.WHITE

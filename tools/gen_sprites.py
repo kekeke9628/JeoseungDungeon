@@ -81,6 +81,7 @@ ITEM_ICONS = {
     "flower_wine": (T.POTION, (205, 50, 65), (140, 100, 60)),
     "immortal_wine": (T.POTION, (235, 195, 60), (140, 100, 60)),
     "elixir": (T.POTION, (90, 225, 240), (255, 255, 255)),
+    "antidote_herb": (T.POTION, (90, 190, 90), (120, 90, 50)),
     "talisman": (T.SCROLL, (238, 222, 150), (210, 40, 40)),
     "ledger_fragment": (T.SCROLL, (225, 225, 225), (90, 90, 110)),
     "teleport_talisman": (T.SCROLL, (150, 190, 245), (40, 70, 170)),
@@ -180,7 +181,8 @@ def main():
     for i, img in enumerate(sheet):
         contact.alpha_composite(img, ((i % cols) * 16, (i // cols) * 16))
     contact = contact.resize((contact.width * 6, contact.height * 6), Image.NEAREST)
-    contact.save(os.path.join(os.environ.get("SHEET_DIR", "."), "contact_sheet.png"))
+    if os.environ.get("SHEET_DIR"):
+        contact.save(os.path.join(os.environ["SHEET_DIR"], "contact_sheet.png"))
     print("sprites:", len(sheet))
 
 

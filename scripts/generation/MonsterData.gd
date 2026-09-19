@@ -21,3 +21,6 @@ enum AIType { WANDER, AGGRESSIVE, RANGED, AMBUSH }
 @export var loot_chance: float = 0.3
 ## How many tiles away (Chebyshev distance) this monster notices the player.
 @export var detect_radius: int = 5
+## On-hit status applied to the player: "", "poison" or "stun".
+@export var special: String = ""
+@export var special_chance: float = 0.3

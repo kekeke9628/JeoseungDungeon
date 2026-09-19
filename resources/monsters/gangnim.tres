@@ -28,3 +28,5 @@ is_boss = true
 loot_item_ids = Array[String](["elixir"])
 loot_chance = 1.0
 detect_radius = 20
+special = "stun"
+special_chance = 0.15

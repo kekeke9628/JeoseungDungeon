@@ -73,10 +73,11 @@ func _run() -> void:
 	await _test_iap()
 	await _test_stats()
 	await _test_tap_to_move()
+	await _test_status_effects()
 
 func _test_content() -> void:
 	print("[content]")
-	check(ItemDatabase.items.size() == 16, "16 items loaded (got %d)" % ItemDatabase.items.size())
+	check(ItemDatabase.items.size() == 17, "17 items loaded (got %d)" % ItemDatabase.items.size())
 	check(MonsterDatabase.monsters.size() == 17, "17 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
 	check(MonsterDatabase.get_boss_for_floor(10) != null, "boss on floor 10")
 	check(MonsterDatabase.get_boss_for_floor(20) != null, "boss on floor 20")
@@ -419,3 +420,34 @@ func _test_tap_to_move() -> void:
 	var turns: int = GameState.turn_count
 	await game._on_map_tapped(p.grid_pos)
 	check(GameState.turn_count == turns + 1, "tapping your own tile waits a turn")
+
+func _test_status_effects() -> void:
+	print("[status effects]")
+	await _new_game("mudang")
+	var p: Player = game.player
+	_clear_monsters()
+	p.stats.max_hp = 500
+	p.current_hp = 500
+	p.apply_status("poison", 3)
+	check(p.has_status("poison") and p.status_text() != "", "poison applied and shown")
+	var hp: int = p.current_hp
+	game._on_wait_pressed()
+	check(p.current_hp < hp, "poison deals damage on turn end")
+	check(int(p.statuses["poison"]) == 2, "poison counts down")
+	GameState.add_item(ItemDatabase.get_item("antidote_herb"))
+	ItemEffects.use_item(ItemDatabase.get_item("antidote_herb"), p)
+	check(not p.has_status("poison"), "antidote herb cures poison")
+	p.apply_status("stun", 1)
+	var turns: int = GameState.turn_count
+	game._on_direction_pressed(Vector2i(1, 0))
+	check(GameState.turn_count == turns + 1, "stunned input consumes exactly one turn")
+	check(not p.has_status("stun"), "stun wears off")
+	check(MonsterDatabase.get_monster("mulgwisin").special == "poison", "monster special loaded from data")
+	var spot: Vector2i = _adjacent_free_tile(p.grid_pos)
+	game._spawn_monster_at(MonsterDatabase.get_monster("mulgwisin"), spot)
+	var mon = DungeonState.get_actor_at(spot)
+	mon.data = mon.data.duplicate()
+	mon.data.special_chance = 1.0
+	mon._try_special(p)
+	check(p.has_status("poison"), "monster special applies poison to the player")
+	p.cure_status("poison")

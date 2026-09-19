@@ -28,3 +28,5 @@ is_boss = false
 loot_item_ids = Array[String](["diamond_armor", "immortal_wine"])
 loot_chance = 0.4
 detect_radius = 6
+special = "stun"
+special_chance = 0.18

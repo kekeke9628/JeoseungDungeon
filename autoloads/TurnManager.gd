@@ -5,7 +5,7 @@ extends Node
 signal turn_ended
 
 ## The player regains 1 HP every this many turns.
-const REGEN_INTERVAL: int = 6
+const REGEN_INTERVAL: int = 5
 
 var monsters: Array = []  # Array[Monster]
 var player  # Player, set by Player._ready()
@@ -26,6 +26,8 @@ func end_player_turn() -> void:
 		return
 	is_processing = true
 	GameState.turn_count += 1
+	if player != null and player.is_alive:
+		player.tick_statuses()
 	if GameState.skill_cooldown_left > 0:
 		GameState.skill_cooldown_left -= 1
 		GameState.skill_changed.emit()
