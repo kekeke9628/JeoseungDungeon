@@ -7,6 +7,9 @@ extends Actor
 ## - RANGED: attacks from up to 3 tiles away without needing to close in.
 ## - AMBUSH: stays still until the player is within 2 tiles, then attacks like AGGRESSIVE.
 
+## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
+const SUMMON_TIER_DROP: int = 6
+
 var data: MonsterData
 var _summoned: bool = false
 
@@ -118,7 +121,7 @@ func take_damage(amount: int) -> void:
 
 ## Calls escorts onto free floor tiles around the boss (nearest rings first).
 func _summon_minions() -> void:
-	var pool: Array[MonsterData] = MonsterDatabase.get_monsters_for_floor(maxi(1, GameState.current_floor - 1))
+	var pool: Array[MonsterData] = MonsterDatabase.get_monsters_for_floor(maxi(1, GameState.current_floor - SUMMON_TIER_DROP))
 	if pool.is_empty() or get_parent() == null:
 		return
 	MessageBus.log_message("%s 수하를 불러냈다!" % Josa.i_ga(display_name))

@@ -30,5 +30,5 @@ loot_chance = 1.0
 detect_radius = 20
 special = "stun"
 special_chance = 0.15
-summon_fraction = 0.5
+summon_fraction = 0.4
 summon_count = 2
