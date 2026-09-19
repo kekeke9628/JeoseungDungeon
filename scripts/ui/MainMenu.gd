@@ -9,6 +9,7 @@ var _class_box: Control
 var _settings_btn: Button
 var _help_btn: Button
 var _shop_btn: Button
+var _records_btn: Button
 
 func _ready() -> void:
 	position = Vector2.ZERO
@@ -25,7 +26,10 @@ func _ready() -> void:
 	add_child(settings)
 	var shop := ShopPanel.new()
 	add_child(help)
+	var records := RecordsPanel.new()
 	add_child(shop)
+	add_child(records)
+	_records_btn.pressed.connect(records.show_panel)
 	_shop_btn.pressed.connect(shop.show_panel)
 	_settings_btn.pressed.connect(settings.show_panel)
 	_help_btn.pressed.connect(help.show_panel)
@@ -62,6 +66,7 @@ func _build_main_box() -> void:
 	_settings_btn = _make_button("설정", Vector2(210, 800), Vector2(300, 90), 32, _main_box)
 	_help_btn = _make_button("도움말", Vector2(210, 920), Vector2(300, 90), 32, _main_box)
 	_shop_btn = _make_button("상점", Vector2(210, 1040), Vector2(300, 90), 32, _main_box)
+	_records_btn = _make_button("기록", Vector2(210, 1160), Vector2(300, 90), 32, _main_box)
 	var data: Dictionary = SaveManager.load_data()
 	cont_btn.disabled = data.is_empty()
 	if not data.is_empty():

@@ -32,6 +32,7 @@ var help_panel: HelpPanel
 
 var _ended: bool = false
 var _last_hp: int = 0
+var _run_recorded: bool = false
 
 func _ready() -> void:
 	randomize()
@@ -297,6 +298,8 @@ func _on_game_over(victory: bool) -> void:
 	AudioManager.stop_music()
 	AudioManager.play("victory" if victory else "defeat")
 	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens)
+	if victory or IAPManager.revive_tokens <= 0:
+		_finish_run(victory)
 
 func _on_revive() -> void:
 	if not _ended or not is_instance_valid(player) or player.is_alive or not IAPManager.consume_revive():
@@ -310,5 +313,14 @@ func _on_revive() -> void:
 	SaveManager.save_run(player)
 	_refresh_vision()
 
+## Records the run once. A defeat that can still be revived is recorded only
+## when the player gives up and restarts.
+func _finish_run(victory: bool) -> void:
+	if _run_recorded:
+		return
+	_run_recorded = true
+	StatsManager.record_run_end(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, GameState.player_class.display_name)
+
 func _on_restart() -> void:
+	_finish_run(false)
 	get_tree().change_scene_to_file(MENU_SCENE)

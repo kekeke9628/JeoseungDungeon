@@ -19,10 +19,12 @@ func _ready() -> void:
 	SettingsManager.tutorial_seen = true
 	SaveManager.save_path = "user://test_save.json"
 	IAPManager.store_path = "user://test_purchases.json"
+	StatsManager.stats_path = "user://test_stats.json"
 	IAPManager.reset_for_tests()
 	await _run()
 	SaveManager.delete_save()
 	IAPManager.reset_for_tests()
+	StatsManager.reset_for_tests()
 	print("== %d failure(s)" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -69,6 +71,7 @@ func _run() -> void:
 	await _test_progression()
 	await _test_save_load()
 	await _test_iap()
+	await _test_stats()
 
 func _test_content() -> void:
 	print("[content]")
@@ -353,4 +356,35 @@ func _test_iap() -> void:
 	game.player.take_damage(999999)
 	game._on_revive()
 	check(not game.player.is_alive and game._ended, "no token means no second revive")
+	IAPManager.reset_for_tests()
+
+func _test_stats() -> void:
+	print("[stats]")
+	StatsManager.reset_for_tests()
+	IAPManager.reset_for_tests()
+	await _new_game("hwarang")
+	_clear_monsters()
+	var spot: Vector2i = _adjacent_free_tile(game.player.grid_pos)
+	game._spawn_monster_at(MonsterDatabase.get_monster("mongdal"), spot)
+	DungeonState.get_actor_at(spot).take_damage(9999)
+	check(StatsManager.kills == 1, "kill is counted")
+	game.player.take_damage(999999)
+	check(StatsManager.total_runs == 1 and StatsManager.wins == 0, "defeat recorded once")
+	check(StatsManager.best_floor == 1, "best floor recorded")
+	# _on_restart() also changes scene, which would free this test node; call the recording step only.
+	game._finish_run(false)
+	check(StatsManager.total_runs == 1, "finishing twice does not double-record")
+	IAPManager.revive_tokens = 1
+	await _new_game("dosa")
+	game.player.take_damage(999999)
+	check(StatsManager.total_runs == 1, "revivable defeat is not recorded yet")
+	game._on_revive()
+	check(StatsManager.total_runs == 1 and game.player.is_alive, "revive keeps the run open")
+	GameState.game_over.emit(true)
+	check(StatsManager.total_runs == 2 and StatsManager.wins == 1, "victory recorded")
+	check(StatsManager.class_wins.get("도사", 0) == 1, "class win recorded by name")
+	var runs: int = StatsManager.total_runs
+	StatsManager.total_runs = 0
+	StatsManager.load_stats()
+	check(StatsManager.total_runs == runs, "records persist across reload")
 	IAPManager.reset_for_tests()

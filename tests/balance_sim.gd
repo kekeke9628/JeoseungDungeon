@@ -16,6 +16,8 @@ func _ready() -> void:
 	SaveManager.save_path = "user://sim_save.json"
 	IAPManager.store_path = "user://sim_purchases.json"
 	IAPManager.reset_for_tests()
+	StatsManager.stats_path = "user://sim_stats.json"
+	StatsManager.reset_for_tests()
 	var total_wins: int = 0
 	var total_runs: int = 0
 	for cls in CLASSES:

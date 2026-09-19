@@ -47,6 +47,7 @@ func die() -> void:
 	TurnManager.unregister_monster(self)
 	DungeonState.clear_actor_at(grid_pos)
 	GameState.add_xp(data.xp_reward)
+	StatsManager.record_kill()
 	MessageBus.log_message("%s 물리쳤다! (경험치 +%d)" % [Josa.eul_reul(display_name), data.xp_reward])
 	if data.loot_item_ids.size() > 0 and randf() < data.loot_chance:
 		var item_id: String = data.loot_item_ids[randi() % data.loot_item_ids.size()]
