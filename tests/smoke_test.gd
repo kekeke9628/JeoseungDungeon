@@ -77,6 +77,7 @@ func _run() -> void:
 	await _test_review_regressions()
 	await _test_boss_summon()
 	await _test_polish()
+	await _test_floor_theme()
 
 func _test_content() -> void:
 	print("[content]")
@@ -535,3 +536,11 @@ func _test_polish() -> void:
 	check(game.game_over_screen._detail.text.contains("독에 쓰러졌다"), "poison death is described")
 	game._fade_in()
 	check(game._fade.modulate.a == 1.0, "floor fade starts opaque")
+
+func _test_floor_theme() -> void:
+	print("[floor theme]")
+	check(FloorTheme.band_name(1) == "저승길" and FloorTheme.band_name(5) == "저승길", "floors 1-5 are the first band")
+	check(FloorTheme.band_name(6) == "황천강" and FloorTheme.band_name(10) == "황천강", "floors 6-10 are the second band")
+	check(FloorTheme.band_name(20) == "염라전", "floor 20 is the last band")
+	check(FloorTheme.tint(1) != FloorTheme.tint(6) and FloorTheme.tint(6) != FloorTheme.tint(11), "bands have distinct tints")
+	check(FloorTheme.band_name(99) == "염라전" and FloorTheme.band_name(0) == "저승길", "out-of-range floors are clamped")

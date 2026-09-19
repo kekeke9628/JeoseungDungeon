@@ -75,6 +75,6 @@ func set_status(text: String) -> void:
 	_refresh()
 
 func _refresh() -> void:
-	_label.text = "저승 %d층  HP %d/%d\nLv %d (%d/%d)  엽전 %d" % [_floor, _hp, _max_hp, _level, _xp, _xp_next, _gold]
+	_label.text = "%s %d층  HP %d/%d\nLv %d (%d/%d)  엽전 %d" % [FloorTheme.band_name(_floor), _floor, _hp, _max_hp, _level, _xp, _xp_next, _gold]
 	if not _status.is_empty():
 		_label.text += "  [%s]" % _status

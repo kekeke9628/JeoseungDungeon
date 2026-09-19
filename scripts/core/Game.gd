@@ -171,7 +171,7 @@ func _load_floor(floor_num: int) -> void:
 
 	GameState.current_floor = floor_num
 	hud.set_floor(floor_num)
-	MessageBus.log_message("저승 %d층에 발을 들였다..." % floor_num)
+	MessageBus.log_message("%s %d층에 발을 들였다..." % [FloorTheme.band_name(floor_num), floor_num])
 	if floor_num > 1:
 		AudioManager.play("stairs")
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")

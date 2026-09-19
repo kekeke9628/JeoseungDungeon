@@ -54,6 +54,7 @@ func _tile_color(tile: int) -> Color:
 
 func _draw() -> void:
 	var ts: int = Constants.TILE_SIZE
+	var tint: Color = FloorTheme.tint(GameState.current_floor)
 	for x in range(width):
 		for y in range(height):
 			var pos := Vector2i(x, y)
@@ -64,7 +65,7 @@ func _draw() -> void:
 			var dimmed: bool = not DungeonState.visible_tiles.has(pos)
 			var tex: Texture2D = SpriteLibrary.get_tile(_tile_name(tile))
 			if tex != null:
-				draw_texture_rect(tex, rect, false, REMEMBERED_MODULATE if dimmed else Color.WHITE)
+				draw_texture_rect(tex, rect, false, (REMEMBERED_MODULATE if dimmed else Color.WHITE) * tint)
 			else:
 				var color: Color = _tile_color(tile)
 				draw_rect(rect, color.darkened(REMEMBERED_DIM) if dimmed else color, true)
