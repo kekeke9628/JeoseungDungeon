@@ -16,6 +16,7 @@ const REVIVE_HP_FRACTION: float = 0.5
 const SHAKE_STRENGTH: float = 8.0
 const SHAKE_TIME: float = 0.18
 const CAMERA_BASE_OFFSET := Vector2(0, 110)
+const WALK_STEP_DELAY: float = 0.08
 
 var world: Node2D
 var floor_node: Node2D
@@ -33,6 +34,7 @@ var help_panel: HelpPanel
 var _ended: bool = false
 var _last_hp: int = 0
 var _run_recorded: bool = false
+var _walk_token: int = 0
 
 func _ready() -> void:
 	randomize()
@@ -206,6 +208,10 @@ func _refresh_vision() -> void:
 			m.visible = DungeonState.visible_tiles.has(m.grid_pos)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var cell := Vector2i((get_global_mouse_position() / float(Constants.TILE_SIZE)).floor())
+		_on_map_tapped(cell)
+		return
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	match event.keycode:
@@ -223,6 +229,45 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_skill_pressed()
 		KEY_I:
 			inventory_panel.toggle()
+
+## Tap-to-move: a tap on a tile walks (or attacks) toward it. Walking stops when
+## a new monster comes into view, damage is taken, or the floor changes.
+func _on_map_tapped(cell: Vector2i) -> void:
+	_walk_token += 1
+	if not _can_act():
+		return
+	if cell == player.grid_pos:
+		_on_wait_pressed()
+		return
+	var path: Array[Vector2i] = Pathfinder.find_path(player.grid_pos, cell)
+	if path.size() < 2:
+		return
+	await _walk(path, _walk_token)
+
+func _visible_monster_count() -> int:
+	var n: int = 0
+	for m in TurnManager.monsters:
+		if is_instance_valid(m) and DungeonState.visible_tiles.has(m.grid_pos):
+			n += 1
+	return n
+
+func _walk(path: Array[Vector2i], token: int) -> void:
+	var floor_at_start: int = GameState.current_floor
+	var hp_at_start: int = player.current_hp
+	var seen_at_start: int = _visible_monster_count()
+	for i in range(1, path.size()):
+		if token != _walk_token or not _can_act() or GameState.current_floor != floor_at_start:
+			return
+		if not player.try_move(path[i] - player.grid_pos):
+			return
+		_after_player_action()
+		if seen_at_start > 0:
+			return  # enemies in view: one careful step per tap
+		if not is_instance_valid(player) or not player.is_alive or player.current_hp < hp_at_start:
+			return
+		if _visible_monster_count() > seen_at_start:
+			return
+		await get_tree().create_timer(WALK_STEP_DELAY).timeout
 
 func _can_act() -> bool:
 	return not _ended and is_instance_valid(player) and player.is_alive and not _modal_open()

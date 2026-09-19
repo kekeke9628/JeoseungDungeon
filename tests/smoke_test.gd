@@ -72,6 +72,7 @@ func _run() -> void:
 	await _test_save_load()
 	await _test_iap()
 	await _test_stats()
+	await _test_tap_to_move()
 
 func _test_content() -> void:
 	print("[content]")
@@ -388,3 +389,33 @@ func _test_stats() -> void:
 	StatsManager.load_stats()
 	check(StatsManager.total_runs == runs, "records persist across reload")
 	IAPManager.reset_for_tests()
+
+func _test_tap_to_move() -> void:
+	print("[tap to move]")
+	await _new_game("mudang")
+	var p: Player = game.player
+	_clear_monsters()
+	DungeonState.actors_at.clear()
+	DungeonState.actors_at[p.grid_pos] = p
+	DungeonState.reveal_all()
+	check(Pathfinder.find_path(p.grid_pos, p.grid_pos).is_empty(), "no path to own tile")
+	var target := Vector2i(-1, -1)
+	for pos in DungeonState.grid.keys():
+		if DungeonState.tile_at(pos) == DungeonState.Tile.FLOOR and pos != p.grid_pos:
+			var d: int = absi(pos.x - p.grid_pos.x) + absi(pos.y - p.grid_pos.y)
+			if d >= 6 and not Pathfinder.find_path(p.grid_pos, pos).is_empty():
+				target = pos
+				break
+	check(target.x >= 0, "found a distant reachable tile")
+	var trap_free: bool = true
+	for step in Pathfinder.find_path(p.grid_pos, target):
+		if DungeonState.tile_at(step) == DungeonState.Tile.TRAP:
+			trap_free = false
+	if trap_free:
+		_god_mode()
+		await game._on_map_tapped(target)
+		check(p.grid_pos == target, "tap walks the player to the tile (at %s, want %s)" % [p.grid_pos, target])
+	check(Pathfinder.find_path(p.grid_pos, Vector2i(-50, -50)).is_empty(), "unreachable tile gives no path")
+	var turns: int = GameState.turn_count
+	await game._on_map_tapped(p.grid_pos)
+	check(GameState.turn_count == turns + 1, "tapping your own tile waits a turn")
