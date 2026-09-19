@@ -11,6 +11,8 @@ const LOOT_PER_FLOOR_MIN: int = 4
 const LOOT_PER_FLOOR_MAX: int = 6
 const GOLD_CHANCE: float = 0.4
 const HP_PER_LEVEL: int = 7
+const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
+const REVIVE_HP_FRACTION: float = 0.5
 
 var world: Node2D
 var floor_node: Node2D
@@ -78,6 +80,7 @@ func _build_ui() -> void:
 	dpad.skill_pressed.connect(_on_skill_pressed)
 	inventory_panel.item_chosen.connect(_on_item_chosen)
 	game_over_screen.restart_pressed.connect(_on_restart)
+	game_over_screen.revive_pressed.connect(_on_revive)
 
 func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	var class_data: CharacterClassData = load("%s/%s.tres" % [CLASS_DIR, class_id])
@@ -86,6 +89,8 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	world.add_child(player)
 	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
 	player.hp_changed.connect(hud.set_hp)
+	if IAPManager.supporter:
+		player.visual.color = SUPPORTER_GLOW
 
 	camera = Camera2D.new()
 	camera.offset = Vector2(0, 110)
@@ -100,6 +105,10 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 		var item: ItemData = ItemDatabase.get_item(item_id)
 		if item:
 			GameState.add_item(item)
+	if IAPManager.supporter:
+		var wine: ItemData = ItemDatabase.get_item("flower_wine")
+		for i in range(IAPManager.SUPPORTER_BONUS_WINE):
+			GameState.add_item(wine)
 	for item_id in class_data.starting_equip_ids:
 		var equip: ItemData = ItemDatabase.get_item(item_id)
 		if equip:
@@ -272,7 +281,19 @@ func _on_game_over(victory: bool) -> void:
 	SaveManager.delete_save()
 	AudioManager.stop_music()
 	AudioManager.play("victory" if victory else "defeat")
-	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count)
+	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens)
+
+func _on_revive() -> void:
+	if not _ended or not is_instance_valid(player) or player.is_alive or not IAPManager.consume_revive():
+		return
+	player.revive(REVIVE_HP_FRACTION)
+	_ended = false
+	game_over_screen.visible = false
+	MessageBus.log_message("부활 부적이 타오르며 다시 숨이 돌아왔다!")
+	AudioManager.play("levelup")
+	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(GameState.current_floor) != null else "ambient")
+	SaveManager.save_run(player)
+	_refresh_vision()
 
 func _on_restart() -> void:
 	get_tree().change_scene_to_file(MENU_SCENE)

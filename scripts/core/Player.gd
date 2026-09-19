@@ -31,9 +31,19 @@ func try_move(dir: Vector2i) -> bool:
 func wait_turn() -> void:
 	TurnManager.end_player_turn()
 
+## The player node is kept alive on death so a revive token can bring it back.
 func die() -> void:
+	is_alive = false
+	modulate = Color(1, 1, 1, 0.45)
+	died.emit(self)
 	GameState.game_over.emit(false)
-	super.die()
+
+func revive(hp_fraction: float) -> void:
+	is_alive = true
+	modulate = Color.WHITE
+	current_hp = maxi(1, int(stats.max_hp * hp_fraction))
+	_update_hp_bar()
+	hp_changed.emit(current_hp, stats.max_hp)
 
 func _log_attack_result(result: Dictionary, target) -> void:
 	AudioManager.play("hit" if result.hit else "miss")

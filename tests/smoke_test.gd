@@ -18,8 +18,11 @@ func _ready() -> void:
 	SettingsManager.settings_path = "user://test_settings.cfg"
 	SettingsManager.tutorial_seen = true
 	SaveManager.save_path = "user://test_save.json"
+	IAPManager.store_path = "user://test_purchases.json"
+	IAPManager.reset_for_tests()
 	await _run()
 	SaveManager.delete_save()
+	IAPManager.reset_for_tests()
 	print("== %d failure(s)" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -65,6 +68,7 @@ func _run() -> void:
 	await _test_random_play()
 	await _test_progression()
 	await _test_save_load()
+	await _test_iap()
 
 func _test_content() -> void:
 	print("[content]")
@@ -306,3 +310,44 @@ func _test_save_load() -> void:
 	check(GameState.is_identified("talisman"), "continue restores identification")
 	SaveManager.delete_save()
 	check(not SaveManager.has_save(), "delete_save removes the file")
+
+func _wine_count() -> int:
+	for e in GameState.inventory:
+		if e.item_data.id == "flower_wine":
+			return e.quantity
+	return 0
+
+func _test_iap() -> void:
+	print("[iap / revive]")
+	IAPManager.reset_for_tests()
+	check(IAPManager.revive_tokens == 0 and not IAPManager.supporter, "fresh purchase state")
+	IAPManager.purchase("revive_token")
+	check(IAPManager.revive_tokens == 1, "consumable purchase grants a token")
+	IAPManager.purchase("supporter_pack")
+	check(IAPManager.supporter, "supporter pack purchase sets flag")
+	var reasons: Array[String] = []
+	IAPManager.purchase_failed.connect(func(_p, r): reasons.append(r))
+	IAPManager.purchase("supporter_pack")
+	IAPManager.purchase("bogus")
+	check(reasons.size() == 2, "duplicate and unknown purchases fail (%d)" % reasons.size())
+	IAPManager.supporter = false
+	IAPManager.revive_tokens = 0
+	IAPManager.load_state()
+	check(IAPManager.supporter and IAPManager.revive_tokens == 1, "purchases persist across reload")
+
+	await _new_game("mudang")
+	check(_wine_count() == 4, "supporter starts with 2 bonus wine (got %d)" % _wine_count())
+
+	game.player.take_damage(999999)
+	check(game._ended and not game.player.is_alive, "player dies")
+	check(game.game_over_screen.visible, "game over screen shown on death")
+	game._on_revive()
+	check(game.player.is_alive and not game._ended, "revive brings the player back")
+	check(game.player.current_hp == int(game.player.stats.max_hp * 0.5), "revive restores half hp (%d)" % game.player.current_hp)
+	check(IAPManager.revive_tokens == 0, "revive consumes a token")
+	check(not game.game_over_screen.visible, "game over screen hidden after revive")
+	check(SaveManager.has_save(), "revive re-saves the run")
+	game.player.take_damage(999999)
+	game._on_revive()
+	check(not game.player.is_alive and game._ended, "no token means no second revive")
+	IAPManager.reset_for_tests()

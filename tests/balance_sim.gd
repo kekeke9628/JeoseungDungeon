@@ -14,6 +14,8 @@ func _ready() -> void:
 	SettingsManager.settings_path = "user://test_settings.cfg"
 	SettingsManager.tutorial_seen = true
 	SaveManager.save_path = "user://sim_save.json"
+	IAPManager.store_path = "user://sim_purchases.json"
+	IAPManager.reset_for_tests()
 	var total_wins: int = 0
 	var total_runs: int = 0
 	for cls in CLASSES:

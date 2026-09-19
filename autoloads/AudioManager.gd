@@ -71,6 +71,8 @@ func _apply_music_volume() -> void:
 
 func _exit_tree() -> void:
 	for p in _pool:
+		p.stop()
 		p.stream = null
+	_music.stop()
 	_music.stream = null
 	_cache.clear()
