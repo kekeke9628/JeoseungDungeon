@@ -4,6 +4,8 @@
 Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름은 전부 오리지널입니다
 (SPD는 GPL-3.0이라 코드·에셋을 가져오면 안 됩니다).
 
+![타이틀](docs/screenshots/title.png) ![플레이](docs/screenshots/gameplay.png)
+
 ## 실행
 - 에디터: Godot 4.7.1로 `project.godot` 열기 -> F5 (메인 메뉴에서 시작)
 - 조작: 방향키/WASD 이동(적에게 부딪히면 공격), Space 대기, E/Q 기술, I 가방. 모바일은 화면 D-pad와 기술 버튼.

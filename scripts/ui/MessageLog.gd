@@ -9,8 +9,8 @@ var _label: Label
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	position = Vector2(0, 820)
-	size = Vector2(720, 170)
+	position = Vector2(0, 796)
+	size = Vector2(720, 198)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.6)
@@ -20,9 +20,9 @@ func _init() -> void:
 
 	_label = Label.new()
 	_label.position = Vector2(14, 6)
-	_label.size = Vector2(692, 158)
+	_label.size = Vector2(692, 186)
 	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label.add_theme_font_size_override("font_size", 20)
+	_label.add_theme_font_size_override("font_size", 19)
 	add_child(_label)
 
 func add_message(text: String) -> void:
