@@ -6,6 +6,8 @@ extends Actor
 ##   chance to ignore it.
 ## - RANGED: attacks from up to 3 tiles away without needing to close in.
 ## - AMBUSH: stays still until the player is within 2 tiles, then attacks like AGGRESSIVE.
+##
+## Monsters do not see traps either, so any move can spring one (see TrapSystem).
 
 ## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
 const SUMMON_TIER_DROP: int = 6
@@ -46,6 +48,11 @@ func take_ai_turn() -> void:
 				_attack(player_actor)
 			elif dist <= data.detect_radius:
 				_move_toward(player_actor.grid_pos)
+
+## Bosses smash floor traps instead of falling into them, so a boss fight is
+## never cut short by a teleport trap.
+func ignores_traps() -> bool:
+	return data != null and data.is_boss
 
 func die() -> void:
 	TurnManager.unregister_monster(self)
@@ -88,6 +95,7 @@ func _move_toward(target_pos: Vector2i) -> void:
 	for next_pos in candidates:
 		if next_pos != grid_pos and DungeonState.is_walkable(next_pos) and DungeonState.get_actor_at(next_pos) == null:
 			DungeonState.move_actor(self, grid_pos, next_pos)
+			TrapSystem.trigger(self, next_pos)
 			return
 
 func _move_random() -> void:
@@ -97,6 +105,7 @@ func _move_random() -> void:
 		var np: Vector2i = grid_pos + d
 		if DungeonState.is_walkable(np) and DungeonState.get_actor_at(np) == null:
 			DungeonState.move_actor(self, grid_pos, np)
+			TrapSystem.trigger(self, np)
 			return
 
 func _chebyshev_distance(a: Vector2i, b: Vector2i) -> int:

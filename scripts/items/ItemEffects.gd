@@ -60,7 +60,8 @@ static func _read(item: ItemData, player: Player) -> bool:
 			GameState.identify(item.id)
 			GameState.remove_item(item)
 			DungeonState.reveal_all()
-			MessageBus.log_message("눈앞에 이 층의 모습이 펼쳐진다.")
+			TrapSystem.spot_all()
+			MessageBus.log_message("눈앞에 이 층의 모습이 펼쳐진다. 숨은 함정까지 훤히 보인다.")
 			return true
 		"ledger_fragment":
 			var unknown: Array[ItemData] = []

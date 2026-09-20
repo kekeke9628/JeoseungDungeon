@@ -35,6 +35,7 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 - 설정 화면, 첫 실행 도움말, 메인 메뉴 상점, 기록(통계) 화면
 - 보스 소환 패턴: 강림차사(10층)/염라대왕(20층)은 체력이 절반 안팎으로 줄면 수하를 불러냄 (`MonsterData.summon_fraction/summon_count`)
 - 특수 지형: 우물(체력 절반 회복·해독)과 제단(최대 체력/공격/방어 중 하나 영구 강화), 한 번 쓰면 사라짐
+- 함정 상호작용: 몬스터도 숨은 함정을 밟는다. 함정 옆 칸에 서면 확률로 이음새를 알아채고(제자리 대기로 재시도), 알아챈 함정은 화면에 표시되고 탭 이동이 피해 간다. 그 칸으로 적을 유인하면 대신 걸려들고, 보스는 함정을 부수고 지나간다. 천리안 부적은 층 전체의 함정까지 드러낸다
 - 층 테마: 5층 단위 구간 이름(저승길/황천강/지옥문/염라전)과 타일 색조
 - 상태이상: 중독(턴마다 피해)·기절(행동 손실). 일부 몬스터가 확률로 걸고 해독초로 치료
 - 전투 피드백(피해 숫자, 피격 번쩍임, 화면 흔들림), 탭 이동(자동 걷기, 적이 보이면 한 칸씩)
@@ -46,11 +47,11 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 
 ## 구조
 - `autoloads/` 전역 상태 (GameState, DungeonState, TurnManager, SaveManager, ItemDatabase, MonsterDatabase, MessageBus)
-- `scripts/core` Actor/Player/Game/CombatSystem/Josa, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더
+- `scripts/core` Actor/Player/Game/CombatSystem/TrapSystem/Josa, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더
 - `scripts/items` ItemData/ItemEffects/SkillEffects, `scripts/ui` 코드로 만든 UI
 - 스프라이트는 `assets/sprites/**`(생성 결과물)를 `SpriteLibrary`가 읽음. 더 좋은 아트로 교체하려면 같은 파일명의 PNG로 덮어쓰면 됨
 
 ## 다음 단계
 - Phase 3 남은 것: 실제 스토어 결제 플러그인 연결, Android/iOS 실제 빌드(내보내기 템플릿·JDK·Android SDK 필요, iOS는 Mac 필요), 실기기 터치 테스트, 전문 아트/사운드로 교체(선택)
-- 알려진 한계: 도움말/튜토리얼 없음, 설정(볼륨 등) 없음, 층 중간 저장 없음(층 진입 시점만 저장),
-  몬스터가 함정을 무시함, 실기기(Android/iOS)에서는 아직 실행해 보지 않음
+- 알려진 한계: 층 중간 저장 없음(층 진입 시점만 저장), 몬스터는 알아챈 함정도 피하지 못함(유인 전술의 전제),
+  실기기(Android/iOS)에서는 아직 실행해 보지 않음

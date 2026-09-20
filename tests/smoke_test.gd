@@ -234,6 +234,105 @@ func _test_vision_doors_traps() -> void:
 	check(DungeonState.tile_at(trap_pos) == DungeonState.Tile.TRAP_SPENT, "trap is spent after triggering")
 	check(p.current_hp < hp_before or p.grid_pos != trap_pos, "trap hurt or teleported the player")
 
+	_god_mode()
+	var line: Array[Vector2i] = _find_straight_run(p.grid_pos)
+	check(not line.is_empty(), "found a straight run of floor tiles for the monster trap test")
+	if not line.is_empty():
+		DungeonState.move_actor(p, p.grid_pos, line[0])
+		var mon_trap: Vector2i = line[1]
+		var mon_pos: Vector2i = line[2]
+		DungeonState.grid[mon_trap] = DungeonState.Tile.TRAP
+		game._spawn_monster_at(MonsterDatabase.get_monster("dokkaebi"), mon_pos)
+		var mon = DungeonState.get_actor_at(mon_pos)
+		var mon_hp: int = mon.current_hp
+		game._on_wait_pressed()
+		check(DungeonState.tile_at(mon_trap) == DungeonState.Tile.TRAP_SPENT, "a monster springs the trap it walks into")
+		var mon_affected: bool = not is_instance_valid(mon) or not mon.is_alive or mon.current_hp < mon_hp or mon.grid_pos != mon_trap
+		check(mon_affected, "the trap hurt or displaced the monster")
+
+	var boss_data: MonsterData = MonsterDatabase.get_boss_for_floor(10)
+	var boss_spot: Vector2i = DungeonState.random_free_floor_tile()
+	check(boss_data != null and boss_spot.x >= 0, "found a spot to test a boss on a trap")
+	if boss_data != null and boss_spot.x >= 0:
+		game._spawn_monster_at(boss_data, boss_spot)
+		var boss = DungeonState.get_actor_at(boss_spot)
+		var boss_hp: int = boss.current_hp
+		DungeonState.grid[boss_spot] = DungeonState.Tile.TRAP
+		TrapSystem.trigger(boss, boss_spot)
+		check(DungeonState.tile_at(boss_spot) == DungeonState.Tile.TRAP_SPENT, "a boss smashes the trap it steps on")
+		check(boss.current_hp == boss_hp and boss.grid_pos == boss_spot, "a boss is unharmed and not displaced by a trap")
+
+	var spot_run: Array[Vector2i] = _find_straight_run(p.grid_pos)
+	check(not spot_run.is_empty(), "found floor tiles for the trap spotting test")
+	if not spot_run.is_empty():
+		DungeonState.move_actor(p, p.grid_pos, spot_run[0])
+		var armed: Vector2i = spot_run[1]
+		DungeonState.grid[armed] = DungeonState.Tile.TRAP
+		check(not DungeonState.spotted_traps.has(armed), "an armed trap starts unnoticed")
+		for i in range(80):
+			game._refresh_vision()
+			if DungeonState.spotted_traps.has(armed):
+				break
+		check(DungeonState.spotted_traps.has(armed), "waiting next to an armed trap eventually spots it")
+		p.try_move(armed - p.grid_pos)
+		check(not DungeonState.spotted_traps.has(armed), "a sprung trap stops being a spotted one")
+
+	var saved_grid2: Dictionary = DungeonState.grid
+	var saved_explored: Dictionary = DungeonState.explored
+	var saved_actors: Dictionary = DungeonState.actors_at
+	DungeonState.grid = {}
+	DungeonState.explored = {}
+	DungeonState.actors_at = {}
+	DungeonState.spotted_traps.clear()
+	for x in range(0, 3):
+		for y in range(0, 3):
+			DungeonState.grid[Vector2i(x, y)] = DungeonState.Tile.FLOOR
+			DungeonState.explored[Vector2i(x, y)] = true
+	check(Pathfinder.find_path(Vector2i(0, 1), Vector2i(2, 1)).has(Vector2i(1, 1)), "a path runs straight across open floor")
+	DungeonState.grid[Vector2i(1, 1)] = DungeonState.Tile.TRAP
+	DungeonState.spotted_traps[Vector2i(1, 1)] = true
+	var around: Array[Vector2i] = Pathfinder.find_path(Vector2i(0, 1), Vector2i(2, 1))
+	check(not around.is_empty() and not around.has(Vector2i(1, 1)), "tap-to-move walks around a spotted trap")
+	DungeonState.grid = {}
+	DungeonState.explored = {}
+	DungeonState.spotted_traps.clear()
+	for x in range(0, 3):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+		DungeonState.explored[Vector2i(x, 0)] = true
+	DungeonState.grid[Vector2i(1, 0)] = DungeonState.Tile.TRAP
+	DungeonState.spotted_traps[Vector2i(1, 0)] = true
+	check(Pathfinder.find_path(Vector2i(0, 0), Vector2i(2, 0)).size() == 3, "a corridor with no way around still gives a path")
+	DungeonState.spotted_traps.clear()
+	TrapSystem.spot_all()
+	check(DungeonState.spotted_traps.has(Vector2i(1, 0)), "clairvoyance reveals every armed trap")
+	var route: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
+	check(game._route_hits_spotted_trap(route, 1), "auto-walk stops when a spotted trap lies ahead")
+	check(not game._route_hits_spotted_trap(route, 2), "the tapped destination itself never blocks the walk")
+	DungeonState.grid = saved_grid2
+	DungeonState.explored = saved_explored
+	DungeonState.actors_at = saved_actors
+	DungeonState.spotted_traps.clear()
+
+## Three free floor tiles in a row (player spot, middle, far), preferring ones
+## near start_pos. Empty if the floor has none.
+func _find_straight_run(start_pos: Vector2i) -> Array[Vector2i]:
+	var best: Array[Vector2i] = []
+	var best_dist: int = 1 << 30
+	for pos in DungeonState.grid.keys():
+		for d in [Vector2i(1, 0), Vector2i(0, 1)]:
+			var run: Array[Vector2i] = [pos, pos + d, pos + d * 2]
+			var ok: bool = true
+			for t in run:
+				if DungeonState.tile_at(t) != DungeonState.Tile.FLOOR or DungeonState.get_actor_at(t) != null:
+					ok = false
+			if not ok:
+				continue
+			var dist: int = absi(pos.x - start_pos.x) + absi(pos.y - start_pos.y)
+			if dist < best_dist:
+				best_dist = dist
+				best = run
+	return best
+
 func _test_random_play() -> void:
 	print("[random play x600]")
 	await _new_game("hwarang")

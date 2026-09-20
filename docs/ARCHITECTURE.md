@@ -2,15 +2,15 @@
 
 ## 한 턴의 흐름
 1. 입력(`Game.gd`): 방향 버튼/키/탭 -> `_on_direction_pressed` 등. 기절이면 `_guard_stun()` 이 행동을 소모.
-2. `Player.try_move` 가 이동/공격/줍기/함정 처리 후 `TurnManager.end_player_turn()`.
-3. `TurnManager`: 턴 수 +1 -> 플레이어 상태이상 틱(독 피해) -> 기술 재사용 대기 -1 -> 자연 회복 -> 모든 몬스터가 `take_ai_turn()`.
+2. `Player.try_move` 가 이동/공격/줍기/함정(`TrapSystem.trigger`) 처리 후 `TurnManager.end_player_turn()`.
+3. `TurnManager`: 턴 수 +1 -> 플레이어 상태이상 틱(독 피해) -> 기술 재사용 대기 -1 -> 자연 회복 -> 모든 몬스터가 `take_ai_turn()`. 몬스터가 이동한 칸에 함정이 있으면 같은 `TrapSystem.trigger` 를 탄다.
 4. `Game._after_player_action()`: 계단이면 다음 층 로드, 아니면 시야(FOV) 갱신.
 
 ## 전역 상태(오토로드)
 | 이름 | 역할 |
 |---|---|
 | GameState | 이번 판 진행(층, 골드, 레벨, 인벤토리, 장비, 감정 상태, 기술 대기) |
-| DungeonState | 현재 층 타일/액터/바닥 아이템/시야(explored, visible_tiles) |
+| DungeonState | 현재 층 타일/액터/바닥 아이템/시야(explored, visible_tiles)/알아챈 함정(spotted_traps) |
 | TurnManager | 턴 진행, 몬스터 목록 |
 | SaveManager | 층 진입 시 자동 저장, 판이 끝나면 삭제(영구 사망) |
 | StatsManager | 누적 기록(도전/클리어/처치/최고 층) |
@@ -41,3 +41,6 @@
 - 플레이어 노드는 사망 시 해제하지 않음(부활 부적 지원). 몬스터는 사망 시 해제.
 - 던전은 층 진입 시점에만 저장(층 중간 저장 없음). 저장은 판이 확정적으로 끝날 때(클리어, 부활 없는 사망, 재도전)만 삭제되므로, 부활 부적이 있는 사망 화면에서 앱을 끄면 층 시작 상태로 이어하기가 가능함.
 - 시야 밖 몬스터는 `visible=false` 로 숨김(피해 팝업도 생략).
+- 함정은 `TrapSystem` 한 곳에서 처리하고 플레이어/몬스터가 공유한다. 보스만 예외로 함정을 부수고 지나간다(보스전 중 순간이동으로 싸움이 끊기지 않게).
+- 함정 인지는 확률(`TrapSystem.SPOT_CHANCE`)이다. 인접하면 무조건 보이게 하면 플레이어는 함정을 절대 안 밟게 되어 위협이 사라진다. 알아챈 칸은 `DungeonState.spotted_traps` 에 쌓이고, 렌더러가 `trap_spotted` 타일로 그리며 `Pathfinder` 가 우회한다(우회로가 없으면 그대로 통과).
+- 시야 밖에서 터진 함정은 소리/메시지를 내지 않는다(`DungeonState.visible_tiles` 기준).

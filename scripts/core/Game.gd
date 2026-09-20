@@ -235,6 +235,8 @@ func _fade_in() -> void:
 
 func _refresh_vision() -> void:
 	DungeonState.compute_fov(player.grid_pos, Constants.VISION_RADIUS)
+	for _trap_pos in TrapSystem.spot_near(player.grid_pos):
+		MessageBus.log_message("바닥의 이음새가 눈에 들어온다. 함정이다!")
 	for m in TurnManager.monsters:
 		if not is_instance_valid(m):
 			continue
@@ -313,6 +315,8 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 		if player.has_status("stun") or not player.try_move(step):
 			return
 		_after_player_action()
+		if _route_hits_spotted_trap(path, i + 1):
+			return  # a trap turned up further along the route
 		if seen_at_start > 0:
 			return  # enemies in view: one careful step per tap
 		if not is_instance_valid(player) or not player.is_alive or player.current_hp < hp_at_start:
@@ -320,6 +324,14 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 		if _visible_monster_count() > seen_at_start:
 			return
 		await get_tree().create_timer(WALK_STEP_DELAY).timeout
+
+## True if a trap the player has spotted sits on the rest of the route. The
+## final tile is excluded so tapping a known trap on purpose still works.
+func _route_hits_spotted_trap(path: Array[Vector2i], from_index: int) -> bool:
+	for i in range(from_index, path.size() - 1):
+		if DungeonState.spotted_traps.has(path[i]):
+			return true
+	return false
 
 ## A stunned player loses the action: the turn passes and the stun ticks down.
 func _guard_stun() -> bool:
