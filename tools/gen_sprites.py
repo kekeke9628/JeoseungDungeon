@@ -108,6 +108,18 @@ def tile_floor(rng, spent=False):
     return img
 
 
+def tile_trap_spotted(rng):
+    """Armed trap the player has noticed: floor with the plate seams showing."""
+    img = tile_floor(rng)
+    seam = (120, 96, 40, 255)
+    for i in range(3, 13):
+        for x, y in ((i, 3), (i, 12), (3, i), (12, i)):
+            img.putpixel((x, y), seam)
+    for x, y in ((6, 7), (9, 7), (6, 9), (9, 9)):
+        img.putpixel((x, y), (215, 175, 70, 255))
+    return img
+
+
 def tile_wall(rng):
     img = Image.new("RGBA", (16, 16))
     for y in range(16):
@@ -192,7 +204,8 @@ def main():
         save(img, "actors", hid + ".png")
         sheet.append(img)
     tiles = {"floor": tile_floor(rng), "trap_spent": tile_floor(rng, True), "wall": tile_wall(rng),
-             "door": tile_door(), "stairs": tile_stairs(), "well": tile_well(rng), "altar": tile_altar(rng)}
+             "door": tile_door(), "stairs": tile_stairs(), "well": tile_well(rng), "altar": tile_altar(rng),
+             "trap_spotted": tile_trap_spotted(rng)}
     for name, img in tiles.items():
         save(img, "tiles", name + ".png")
         sheet.append(img)

@@ -18,6 +18,7 @@ var gold_at: Dictionary = {}       # Vector2i -> int
 
 var explored: Dictionary = {}      # Vector2i -> true, ever seen this floor
 var visible_tiles: Dictionary = {} # Vector2i -> true, currently in sight
+var spotted_traps: Dictionary = {} # Vector2i -> true, armed traps the player has noticed
 
 func clear() -> void:
 	grid.clear()
@@ -26,6 +27,7 @@ func clear() -> void:
 	gold_at.clear()
 	explored.clear()
 	visible_tiles.clear()
+	spotted_traps.clear()
 	width = 0
 	height = 0
 

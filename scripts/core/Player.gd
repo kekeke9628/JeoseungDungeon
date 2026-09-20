@@ -7,9 +7,7 @@ signal status_changed
 
 const POISON_TURNS: int = 4
 const STUN_TURNS: int = 1
-const TRAP_BASE_DAMAGE: int = 4
 const WELL_HEAL_FRACTION: float = 0.5
-const TELEPORT_TRAP_CHANCE: float = 0.4
 
 func _ready() -> void:
 	TurnManager.register_player(self)
@@ -30,7 +28,7 @@ func try_move(dir: Vector2i) -> bool:
 	if DungeonState.is_walkable(target):
 		DungeonState.move_actor(self, grid_pos, target)
 		_check_pickup(target)
-		_check_trap(target)
+		TrapSystem.trigger(self, target)
 		_check_feature(target)
 		TurnManager.end_player_turn()
 		return true
@@ -38,6 +36,9 @@ func try_move(dir: Vector2i) -> bool:
 
 func wait_turn() -> void:
 	TurnManager.end_player_turn()
+
+func is_player_actor() -> bool:
+	return true
 
 ## The player node is kept alive on death so a revive token can bring it back.
 func die() -> void:
@@ -74,22 +75,6 @@ func _check_pickup(pos: Vector2i) -> void:
 		GameState.add_gold(gold)
 		AudioManager.play("gold")
 		MessageBus.log_message("저승길 동전 %d개를 주웠다." % gold)
-
-func _check_trap(pos: Vector2i) -> void:
-	if DungeonState.tile_at(pos) != DungeonState.Tile.TRAP:
-		return
-	DungeonState.set_tile(pos, DungeonState.Tile.TRAP_SPENT)
-	AudioManager.play("trap")
-	if randf() < TELEPORT_TRAP_CHANCE:
-		var dest: Vector2i = DungeonState.random_free_floor_tile()
-		if dest.x >= 0:
-			MessageBus.log_message("함정이다! 발밑이 꺼지며 다른 곳으로 끌려갔다.")
-			DungeonState.move_actor(self, grid_pos, dest)
-			return
-	var dmg: int = TRAP_BASE_DAMAGE + GameState.current_floor
-	MessageBus.log_message("함정이다! 가시에 찔려 %d의 피해를 입었다." % dmg)
-	GameState.last_attacker = "함정"
-	take_damage(dmg)
 
 ## Active status effects: name -> turns left ("poison", "stun").
 var statuses: Dictionary = {}

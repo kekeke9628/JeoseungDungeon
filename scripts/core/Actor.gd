@@ -139,3 +139,12 @@ func _flash() -> void:
 ## Sprite color when not flashing; subclasses override (e.g. status tints).
 func _rest_tint() -> Color:
 	return Color.WHITE
+
+## True only for the player-controlled actor (Player overrides), so shared
+## systems can branch on it without depending on the Player class.
+func is_player_actor() -> bool:
+	return false
+
+## Actors heavy enough to shrug off a floor trap (bosses; Monster overrides).
+func ignores_traps() -> bool:
+	return false

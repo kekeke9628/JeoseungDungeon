@@ -13,6 +13,7 @@ const COLOR_FLOOR := Color(0.24, 0.21, 0.28)
 const COLOR_DOOR := Color(0.45, 0.30, 0.12)
 const COLOR_STAIRS := Color(0.75, 0.60, 0.15)
 const COLOR_TRAP_SPENT := Color(0.45, 0.12, 0.12)
+const COLOR_TRAP_SPOTTED := Color(0.50, 0.42, 0.18)
 const COLOR_GRID_LINE := Color(0, 0, 0, 0.15)
 const COLOR_ITEM := Color(0.55, 0.80, 1.0)
 const COLOR_GOLD := Color(1.0, 0.85, 0.2)
@@ -26,7 +27,10 @@ func set_grid(p_grid: Dictionary, p_width: int, p_height: int) -> void:
 	height = p_height
 	queue_redraw()
 
-func _tile_name(tile: int) -> String:
+## spotted: an armed trap the player has noticed, drawn as a visible plate.
+func _tile_name(tile: int, spotted: bool = false) -> String:
+	if spotted:
+		return "trap_spotted"
 	match tile:
 		DungeonState.Tile.DOOR:
 			return "door"
@@ -43,7 +47,9 @@ func _tile_name(tile: int) -> String:
 		_:
 			return "floor"  # FLOOR and hidden TRAP look identical
 
-func _tile_color(tile: int) -> Color:
+func _tile_color(tile: int, spotted: bool = false) -> Color:
+	if spotted:
+		return COLOR_TRAP_SPOTTED
 	match tile:
 		DungeonState.Tile.DOOR:
 			return COLOR_DOOR
@@ -71,11 +77,12 @@ func _draw() -> void:
 			var tile: int = grid.get(pos, DungeonState.Tile.WALL)
 			var rect := Rect2(x * ts, y * ts, ts, ts)
 			var dimmed: bool = not DungeonState.visible_tiles.has(pos)
-			var tex: Texture2D = SpriteLibrary.get_tile(_tile_name(tile))
+			var spotted: bool = tile == DungeonState.Tile.TRAP and DungeonState.spotted_traps.has(pos)
+			var tex: Texture2D = SpriteLibrary.get_tile(_tile_name(tile, spotted))
 			if tex != null:
 				draw_texture_rect(tex, rect, false, (REMEMBERED_MODULATE if dimmed else Color.WHITE) * tint)
 			else:
-				var color: Color = _tile_color(tile)
+				var color: Color = _tile_color(tile, spotted)
 				draw_rect(rect, color.darkened(REMEMBERED_DIM) if dimmed else color, true)
 				draw_rect(rect, COLOR_GRID_LINE, false, 1.0)
 	for pos in DungeonState.items_at.keys():
