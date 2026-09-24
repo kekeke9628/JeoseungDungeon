@@ -530,6 +530,21 @@ func _test_polish() -> void:
 	game._refresh_vision()
 	check(lines.size() == announced, "a monster is announced only once")
 
+	var mongdal: Monster = DungeonState.get_actor_at(spot)
+	_god_mode()
+	_clear_monsters()
+	mongdal.current_hp = 1
+	for i in range(20):
+		if not mongdal.is_alive:
+			break
+		lines.clear()
+		game.player.try_move(spot - game.player.grid_pos)
+	var kill_lines: Array = lines.filter(func(l): return l.contains("물리쳤다"))
+	check(kill_lines.size() == 1, "a melee kill is logged once (got %d)" % kill_lines.size())
+	var hit_at: int = lines.find_custom(func(l): return l.contains("피해를 입혔다"))
+	var kill_at: int = lines.find_custom(func(l): return l.contains("물리쳤다"))
+	check(hit_at >= 0 and hit_at < kill_at, "the damage line comes before the kill line")
+
 	GameState.last_attacker = "도깨비"
 	game.game_over_screen.show_result(false, 3, 2, 50, 0, GameState.last_attacker)
 	check(game.game_over_screen._detail.text.contains("도깨비에게 쓰러졌다"), "game over screen names the killer")

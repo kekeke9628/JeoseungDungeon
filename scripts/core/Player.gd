@@ -21,8 +21,10 @@ func try_move(dir: Vector2i) -> bool:
 	var target := grid_pos + dir
 	var blocking_actor = DungeonState.get_actor_at(target)
 	if blocking_actor != null and blocking_actor != self:
-		var result := CombatSystem.resolve_attack(self, blocking_actor)
+		var result := CombatSystem.roll_attack(self, blocking_actor)
 		_log_attack_result(result, blocking_actor)
+		if result.hit:
+			blocking_actor.take_damage(result.damage)
 		TurnManager.end_player_turn()
 		return true
 	if DungeonState.is_walkable(target):
@@ -57,10 +59,7 @@ func revive(hp_fraction: float) -> void:
 func _log_attack_result(result: Dictionary, target) -> void:
 	AudioManager.play("hit" if result.hit else "miss")
 	if result.hit:
-		var msg: String = "%s에게 %d의 피해를 입혔다!" % [target.display_name, result.damage]
-		if result.defender_died:
-			msg += " %s 물리쳤다!" % Josa.eul_reul(target.display_name)
-		MessageBus.log_message(msg)
+		MessageBus.log_message("%s에게 %d의 피해를 입혔다!" % [target.display_name, result.damage])
 	else:
 		MessageBus.log_message("%s에 대한 공격이 빗나갔다." % target.display_name)
 
