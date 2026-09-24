@@ -422,8 +422,108 @@ func _test_save_load() -> void:
 	check(GameState.skill_cooldown_left == 4, "continue restores skill cooldown")
 	check(GameState.is_identified("talisman"), "continue restores identification")
 	check(game.player.has_status("poison") and int(game.player.statuses["poison"]) == 3, "continue restores status effects")
+	await _test_floor_restore()
+	await _test_death_save()
+	await _test_autosave()
 	SaveManager.delete_save()
 	check(not SaveManager.has_save(), "delete_save removes the file")
+
+## The floor itself survives a restart: layout, explored map, loot, spotted
+## traps, and every monster with its HP.
+func _test_floor_restore() -> void:
+	var p: Player = game.player
+	var step: Vector2i = _adjacent_free_tile(p.grid_pos)
+	if step.x >= 0:
+		DungeonState.move_actor(p, p.grid_pos, step)
+		game._refresh_vision()
+	var loot_pos: Vector2i = DungeonState.random_free_floor_tile()
+	DungeonState.place_item(loot_pos, ItemDatabase.get_item("talisman"))
+	var gold_pos: Vector2i = DungeonState.random_free_floor_tile()
+	DungeonState.place_gold(gold_pos, 42)
+	var trap_pos: Vector2i = DungeonState.random_free_floor_tile()
+	DungeonState.grid[trap_pos] = DungeonState.Tile.TRAP
+	DungeonState.spotted_traps[trap_pos] = true
+	for m in TurnManager.monsters:
+		if m.current_hp > 1:
+			m.current_hp -= 1
+			break
+	var grid_before: String = _grid_signature()
+	var explored_before: int = DungeonState.explored.size()
+	var pos_before: Vector2i = p.grid_pos
+	var monsters_before: String = _monster_signature()
+	SaveManager.save_run(p)
+	await _new_game("mudang", true)
+	check(_grid_signature() == grid_before, "continue restores the exact floor layout")
+	check(game.player.grid_pos == pos_before, "continue puts the player back where they stood")
+	check(DungeonState.explored.size() == explored_before, "continue restores the explored map")
+	check(_monster_signature() == monsters_before, "continue restores every monster, position and hp")
+	var loot = DungeonState.items_at.get(loot_pos)
+	check(loot != null and loot.id == "talisman", "continue restores items on the ground")
+	check(int(DungeonState.gold_at.get(gold_pos, 0)) == 42, "continue restores gold on the ground")
+	check(DungeonState.spotted_traps.has(trap_pos), "continue remembers spotted traps")
+
+	game._load_floor(10)
+	_god_mode()
+	var boss = _find_boss()
+	boss.take_damage(boss.current_hp - maxi(1, int(boss.stats.max_hp * 0.3)))
+	check(boss.has_summoned(), "boss summoned before saving")
+	var boss_hp: int = boss.current_hp
+	SaveManager.save_run(game.player)
+	await _new_game("mudang", true)
+	boss = _find_boss()
+	check(boss != null and boss.has_summoned() and boss.current_hp == boss_hp, "a reloaded boss keeps its hp and does not summon twice")
+
+	var data: Dictionary = SaveManager.load_data()
+	data["floor_state"] = {"w": 3, "h": 1, "rows": ["0x0"], "seen": ["000"]}
+	var f := FileAccess.open(SaveManager.save_path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(data))
+	f.close()
+	await _new_game("mudang", true)
+	var fallback_ok: bool = GameState.current_floor == 10 and DungeonState.width == Constants.GRID_WIDTH and DungeonState.is_walkable(game.player.grid_pos)
+	check(fallback_ok, "a damaged floor snapshot falls back to a freshly generated floor")
+
+## Dying while a revive is still possible is saved, so quitting on the death
+## screen cannot hand the player a free life.
+func _test_death_save() -> void:
+	IAPManager.reset_for_tests()
+	IAPManager.purchase("revive_token")
+	await _new_game("hwarang")
+	GameState.last_attacker = "도깨비"
+	game.player.take_damage(99999)
+	check(bool(SaveManager.load_data().get("dead", false)), "dying with a revive left writes the death to the save")
+	await _new_game("hwarang", true)
+	check(game._ended and not game.player.is_alive and game.game_over_screen.visible, "continuing a death save reopens the death screen")
+	check(game.game_over_screen._detail.text.contains("도깨비"), "the reopened death screen still names the killer")
+	game._on_revive()
+	check(game.player.is_alive and not bool(SaveManager.load_data().get("dead", true)), "reviving clears the death from the save")
+	IAPManager.reset_for_tests()
+
+func _test_autosave() -> void:
+	await _new_game("mudang")
+	_clear_monsters()
+	_god_mode()
+	for i in range(game.AUTOSAVE_TURNS):
+		game._on_wait_pressed()
+	check(int(SaveManager.load_data().turns) == GameState.turn_count, "the run autosaves every few turns")
+	game._on_wait_pressed()
+	check(int(SaveManager.load_data().turns) < GameState.turn_count, "not every single turn writes the save")
+	game.notification(NOTIFICATION_APPLICATION_PAUSED)
+	check(int(SaveManager.load_data().turns) == GameState.turn_count, "backgrounding the app saves right away")
+
+func _grid_signature() -> String:
+	var out := ""
+	for y in range(DungeonState.height):
+		for x in range(DungeonState.width):
+			out += str(DungeonState.tile_at(Vector2i(x, y)))
+	return out
+
+func _monster_signature() -> String:
+	var parts: Array[String] = []
+	for m in TurnManager.monsters:
+		if is_instance_valid(m) and m.is_alive:
+			parts.append("%s@%d,%d:%d" % [m.data.id, m.grid_pos.x, m.grid_pos.y, m.current_hp])
+	parts.sort()
+	return ",".join(parts)
 
 func _wine_count() -> int:
 	for e in GameState.inventory:

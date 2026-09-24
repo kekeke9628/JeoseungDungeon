@@ -54,6 +54,17 @@ func take_ai_turn() -> void:
 func ignores_traps() -> bool:
 	return data != null and data.is_boss
 
+## Whether the one-time summon already happened (kept across saves so a
+## reloaded boss does not call its escorts a second time).
+func has_summoned() -> bool:
+	return _summoned
+
+## Puts a reloaded monster back the way it was saved.
+func restore_state(hp: int, summoned: bool) -> void:
+	current_hp = clampi(hp, 1, stats.max_hp)
+	_summoned = summoned
+	_update_hp_bar()
+
 func die() -> void:
 	TurnManager.unregister_monster(self)
 	DungeonState.clear_actor_at(grid_pos)
