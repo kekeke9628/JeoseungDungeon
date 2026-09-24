@@ -18,6 +18,9 @@ const SHAKE_TIME: float = 0.18
 const CAMERA_BASE_OFFSET := Vector2(0, 110)
 const WALK_STEP_DELAY: float = 0.08
 const FADE_TIME: float = 0.4
+## Mid-floor autosave cadence. The app also saves whenever it is backgrounded
+## or closed, so this only bounds what a hard crash can lose.
+const AUTOSAVE_TURNS: int = 10
 
 var world: Node2D
 var floor_node: Node2D
@@ -40,6 +43,7 @@ var _fade: ColorRect
 var _fade_tween: Tween
 var _seen_monsters: Dictionary = {}
 var _seen_species: Dictionary = {}
+var _last_autosave_turn: int = 0
 
 func _ready() -> void:
 	randomize()
@@ -65,7 +69,8 @@ func _ready() -> void:
 	var class_id: String = str(save_data.class_id) if continuing else GameState.selected_class_id
 	_spawn_player(class_id, save_data if continuing else {})
 	var start_floor: int = int(save_data.floor) if continuing else 1
-	_load_floor(start_floor)
+	if not (continuing and _restore_floor(start_floor, save_data.get("floor_state"))):
+		_load_floor(start_floor)
 	hud.set_level(GameState.player_level, GameState.player_xp, GameState.player_xp_to_next)
 	hud.set_gold(GameState.gold)
 	hud.set_hp(player.current_hp, player.stats.max_hp)
@@ -73,6 +78,10 @@ func _ready() -> void:
 	_update_skill_button()
 	if not SettingsManager.tutorial_seen:
 		help_panel.show_panel()
+	if continuing and bool(save_data.get("dead", false)):
+		# Saved on the death screen while a revive was still possible: reopen
+		# that screen rather than handing the player their life back.
+		player.take_damage(player.current_hp)
 
 func _build_ui() -> void:
 	var fade_layer := CanvasLayer.new()
@@ -143,6 +152,46 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 			ItemEffects.use_item(equip, player)
 
 func _load_floor(floor_num: int) -> void:
+	_clear_floor()
+	var result: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, floor_num)
+	DungeonState.grid = result.grid
+	DungeonState.width = Constants.GRID_WIDTH
+	DungeonState.height = Constants.GRID_HEIGHT
+	DungeonState.stairs_pos = result.stairs_pos
+	_build_floor_node()
+	_place_player(result.start_pos)
+
+	var rooms: Array[Rect2i] = result.rooms
+	_spawn_monsters(floor_num, rooms, result.stairs_pos)
+	_spawn_loot(floor_num, rooms, result.start_pos)
+
+	if floor_num > 1:
+		AudioManager.play("stairs")
+	_enter_floor(floor_num, "%s %d층에 발을 들였다..." % [FloorTheme.band_name(floor_num), floor_num])
+
+## Rebuilds a floor exactly as it was saved. Returns false without touching
+## anything if the snapshot is missing or damaged, so the caller generates one.
+func _restore_floor(floor_num: int, state) -> bool:
+	var snap: Dictionary = SaveManager.decode_floor(state)
+	if snap.is_empty():
+		return false
+	_clear_floor()
+	DungeonState.grid = snap.grid
+	DungeonState.width = snap.width
+	DungeonState.height = snap.height
+	DungeonState.stairs_pos = snap.stairs
+	DungeonState.explored = snap.explored
+	DungeonState.spotted_traps = snap.spotted
+	DungeonState.items_at = snap.items
+	DungeonState.gold_at = snap.gold
+	_build_floor_node()
+	_place_player(snap.player)
+	for m in snap.monsters:
+		_spawn_monster_at(m.data, m.pos).restore_state(m.hp, m.summoned)
+	_enter_floor(floor_num, "%s %d층, 멈췄던 곳에서 다시 걸음을 옮긴다..." % [FloorTheme.band_name(floor_num), floor_num])
+	return true
+
+func _clear_floor() -> void:
 	if floor_node:
 		floor_node.queue_free()
 	DungeonState.clear()
@@ -151,35 +200,40 @@ func _load_floor(floor_num: int) -> void:
 			old_monster.queue_free()
 	TurnManager.monsters.clear()
 
-	var result: Dictionary = DungeonGenerator.generate(Constants.GRID_WIDTH, Constants.GRID_HEIGHT, floor_num)
-	DungeonState.grid = result.grid
-	DungeonState.width = Constants.GRID_WIDTH
-	DungeonState.height = Constants.GRID_HEIGHT
-	DungeonState.stairs_pos = result.stairs_pos
-
+func _build_floor_node() -> void:
 	floor_node = load("res://scenes/dungeon/DungeonFloor.tscn").instantiate()
 	world.add_child(floor_node)
 	world.move_child(floor_node, 0)
-	floor_node.render(DungeonState.grid, Constants.GRID_WIDTH, Constants.GRID_HEIGHT)
+	floor_node.render(DungeonState.grid, DungeonState.width, DungeonState.height)
 
-	player.move_to_grid(result.start_pos)
-	DungeonState.set_actor_at(result.start_pos, player)
+func _place_player(pos: Vector2i) -> void:
+	player.move_to_grid(pos)
+	DungeonState.set_actor_at(pos, player)
 
-	var rooms: Array[Rect2i] = result.rooms
-	_spawn_monsters(floor_num, rooms, result.stairs_pos)
-	_spawn_loot(floor_num, rooms, result.start_pos)
-
+## Shared tail of arriving on a floor, whether generated or restored.
+func _enter_floor(floor_num: int, arrival_text: String) -> void:
 	GameState.current_floor = floor_num
 	hud.set_floor(floor_num)
-	MessageBus.log_message("%s %d층에 발을 들였다..." % [FloorTheme.band_name(floor_num), floor_num])
-	if floor_num > 1:
-		AudioManager.play("stairs")
+	MessageBus.log_message(arrival_text)
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
 	_seen_monsters.clear()
 	_refresh_vision()
 	_fade_in()
+	_autosave()
+
+## Writes the run as it stands. Skipped once the run is over for good (the
+## save was deleted then, and must stay deleted).
+func _autosave() -> void:
+	if _run_recorded or not is_instance_valid(player):
+		return
+	_last_autosave_turn = GameState.turn_count
 	SaveManager.save_run(player)
 	StatsManager.save_stats()
+
+## Mobile OSes kill backgrounded apps without warning, so save on the way out.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_autosave()
 
 func _spawn_monsters(floor_num: int, rooms: Array[Rect2i], stairs_pos: Vector2i) -> void:
 	var boss: MonsterData = MonsterDatabase.get_boss_for_floor(floor_num)
@@ -196,12 +250,13 @@ func _spawn_monsters(floor_num: int, rooms: Array[Rect2i], stairs_pos: Vector2i)
 			continue
 		_spawn_monster_at(pool[randi() % pool.size()], pos)
 
-func _spawn_monster_at(m_data: MonsterData, pos: Vector2i) -> void:
+func _spawn_monster_at(m_data: MonsterData, pos: Vector2i) -> Monster:
 	var m := Monster.new()
 	world.add_child(m)
 	m.setup_from_data(m_data)
 	m.move_to_grid(pos)
 	DungeonState.set_actor_at(pos, m)
+	return m
 
 func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> void:
 	var pool: Array[ItemData] = []
@@ -390,6 +445,8 @@ func _after_player_action() -> void:
 		_load_floor(GameState.current_floor + 1)
 		return
 	_refresh_vision()
+	if GameState.turn_count - _last_autosave_turn >= AUTOSAVE_TURNS:
+		_autosave()
 
 func _update_skill_button() -> void:
 	var c: CharacterClassData = GameState.player_class
@@ -425,6 +482,8 @@ func _on_game_over(victory: bool) -> void:
 	game_over_screen.show_result(victory, GameState.current_floor, GameState.player_level, GameState.turn_count, IAPManager.revive_tokens, GameState.last_attacker)
 	if victory or IAPManager.revive_tokens <= 0:
 		_finish_run(victory)
+	else:
+		_autosave()  # records the death, so quitting now cannot dodge it
 
 func _on_revive() -> void:
 	if not _ended or not is_instance_valid(player) or player.is_alive or not IAPManager.consume_revive():
@@ -435,7 +494,7 @@ func _on_revive() -> void:
 	MessageBus.log_message("부활 부적이 타오르며 다시 숨이 돌아왔다!")
 	AudioManager.play("levelup")
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(GameState.current_floor) != null else "ambient")
-	SaveManager.save_run(player)
+	_autosave()
 	_refresh_vision()
 
 ## Records the run once. A defeat that can still be revived is recorded only

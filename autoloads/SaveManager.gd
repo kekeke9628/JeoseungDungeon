@@ -1,6 +1,8 @@
 extends Node
-## Single-slot run save (roguelike checkpoint on every floor entry). The save
-## is deleted when the run ends. Autoloaded as "SaveManager".
+## Single-slot run save. Written on every floor entry, every few turns and
+## when the app is backgrounded or closed, and it carries the current floor
+## exactly as it stands, so continuing never rerolls the layout or undoes
+## progress. The save is deleted when the run ends. Autoloaded as "SaveManager".
 
 ## Overridable so tests never touch the player's real save.
 var save_path: String = "user://save.json"
@@ -41,6 +43,9 @@ func save_run(player: Player) -> void:
 		"armor": GameState.equipped_armor.id if GameState.equipped_armor else "",
 		"inventory": inv,
 		"identified": GameState.identified_types.keys(),
+		"killer": GameState.last_attacker,
+		"dead": not player.is_alive,
+		"floor_state": encode_floor(player),
 	}
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f == null:
@@ -92,3 +97,114 @@ func apply(data: Dictionary, player: Player) -> void:
 	GameState.identified_types.clear()
 	for id in data.identified:
 		GameState.identified_types[str(id)] = true
+	GameState.last_attacker = str(data.get("killer", ""))
+
+## The current floor as plain data: tiles and what the player has seen as one
+## digit per cell, then ground loot, noticed traps and every living monster.
+func encode_floor(player: Player) -> Dictionary:
+	var rows: Array[String] = []
+	var seen: Array[String] = []
+	for y in range(DungeonState.height):
+		var row := ""
+		var seen_row := ""
+		for x in range(DungeonState.width):
+			var pos := Vector2i(x, y)
+			row += str(DungeonState.tile_at(pos))
+			seen_row += "1" if DungeonState.explored.has(pos) else "0"
+		rows.append(row)
+		seen.append(seen_row)
+	var items: Array = []
+	for pos in DungeonState.items_at.keys():
+		items.append([pos.x, pos.y, DungeonState.items_at[pos].id])
+	var gold: Array = []
+	for pos in DungeonState.gold_at.keys():
+		gold.append([pos.x, pos.y, DungeonState.gold_at[pos]])
+	var spotted: Array = []
+	for pos in DungeonState.spotted_traps.keys():
+		spotted.append([pos.x, pos.y])
+	var monsters: Array = []
+	for m in TurnManager.monsters:
+		if is_instance_valid(m) and m.is_alive:
+			monsters.append({"id": m.data.id, "x": m.grid_pos.x, "y": m.grid_pos.y,
+				"hp": m.current_hp, "summoned": m.has_summoned()})
+	return {
+		"w": DungeonState.width, "h": DungeonState.height, "rows": rows, "seen": seen,
+		"stairs": [DungeonState.stairs_pos.x, DungeonState.stairs_pos.y],
+		"player": [player.grid_pos.x, player.grid_pos.y],
+		"items": items, "gold": gold, "spotted": spotted, "monsters": monsters,
+	}
+
+## Parses encode_floor output without touching any state. Returns {} if the
+## snapshot is missing or damaged, so the caller can generate a fresh floor.
+## Items or monsters whose ids no longer exist are dropped.
+func decode_floor(state) -> Dictionary:
+	if typeof(state) != TYPE_DICTIONARY:
+		return {}
+	var w: int = int(state.get("w", 0))
+	var h: int = int(state.get("h", 0))
+	var rows = state.get("rows")
+	var seen = state.get("seen")
+	if w <= 0 or h <= 0 or typeof(rows) != TYPE_ARRAY or typeof(seen) != TYPE_ARRAY or rows.size() != h or seen.size() != h:
+		return {}
+	var grid: Dictionary = {}
+	var explored: Dictionary = {}
+	for y in range(h):
+		var row: String = str(rows[y])
+		var seen_row: String = str(seen[y])
+		if row.length() != w or seen_row.length() != w:
+			return {}
+		for x in range(w):
+			var ch: String = row[x]
+			if not ch.is_valid_int() or int(ch) >= DungeonState.Tile.size():
+				return {}
+			grid[Vector2i(x, y)] = int(ch)
+			if seen_row[x] == "1":
+				explored[Vector2i(x, y)] = true
+	var player_pos: Vector2i = _vec(state.get("player"))
+	var stairs: Vector2i = _vec(state.get("stairs"))
+	if grid.get(player_pos, DungeonState.Tile.WALL) == DungeonState.Tile.WALL or not grid.has(stairs):
+		return {}
+	var items: Dictionary = {}
+	for e in _list(state.get("items"), TYPE_ARRAY):
+		var item: ItemData = ItemDatabase.get_item(str(e[2])) if e.size() > 2 else null
+		var pos: Vector2i = _vec(e)
+		if item != null and grid.has(pos):
+			items[pos] = item
+	var gold: Dictionary = {}
+	for e in _list(state.get("gold"), TYPE_ARRAY):
+		var pos: Vector2i = _vec(e)
+		if e.size() > 2 and int(e[2]) > 0 and grid.has(pos):
+			gold[pos] = int(e[2])
+	var spotted: Dictionary = {}
+	for e in _list(state.get("spotted"), TYPE_ARRAY):
+		var pos: Vector2i = _vec(e)
+		if grid.get(pos, DungeonState.Tile.WALL) == DungeonState.Tile.TRAP:
+			spotted[pos] = true
+	var monsters: Array = []
+	var taken: Dictionary = {player_pos: true}
+	for m in _list(state.get("monsters"), TYPE_DICTIONARY):
+		var data: MonsterData = MonsterDatabase.get_monster(str(m.get("id", "")))
+		var pos := Vector2i(int(m.get("x", -1)), int(m.get("y", -1)))
+		if data == null or taken.has(pos) or grid.get(pos, DungeonState.Tile.WALL) == DungeonState.Tile.WALL:
+			continue
+		taken[pos] = true
+		monsters.append({"data": data, "pos": pos, "hp": int(m.get("hp", 1)), "summoned": bool(m.get("summoned", false))})
+	return {
+		"width": w, "height": h, "grid": grid, "explored": explored, "stairs": stairs,
+		"player": player_pos, "items": items, "gold": gold, "spotted": spotted, "monsters": monsters,
+	}
+
+static func _vec(v) -> Vector2i:
+	if typeof(v) != TYPE_ARRAY or v.size() < 2:
+		return Vector2i(-1, -1)
+	return Vector2i(int(v[0]), int(v[1]))
+
+## The entries of a saved list that have the expected type, so one bad entry
+## is skipped instead of breaking the whole restore.
+static func _list(v, entry_type: int) -> Array:
+	var out: Array = []
+	if typeof(v) == TYPE_ARRAY:
+		for e in v:
+			if typeof(e) == entry_type:
+				out.append(e)
+	return out
