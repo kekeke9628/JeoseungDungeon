@@ -17,10 +17,10 @@ func _init() -> void:
 	for pid in IAPManager.PRODUCTS.keys():
 		var p: Dictionary = IAPManager.PRODUCTS[pid]
 		var b := Button.new()
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # before size, or size clamps to the longest line
 		b.text = "%s   %s\n%s" % [p.name, p.price, p.desc]
 		b.position = Vector2(30, y)
 		b.size = Vector2(600, 170)
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.add_theme_font_size_override("font_size", 22)
 		b.pressed.connect(_on_buy.bind(pid))
 		add_child(b)
@@ -42,11 +42,11 @@ func _ready() -> void:
 
 func _add_label(text: String, pos: Vector2, lbl_size: Vector2, font_size: int) -> Label:
 	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # before size, or size clamps to the longest line
 	l.text = text
 	l.position = pos
 	l.size = lbl_size
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", font_size)
 	add_child(l)
 	return l
