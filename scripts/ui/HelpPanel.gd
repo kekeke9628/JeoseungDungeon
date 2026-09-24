@@ -8,8 +8,8 @@ const HELP_TEXT: String = "[ 조작 ]\n방향 버튼 / 방향키·WASD: 이동. 
 
 func _init() -> void:
 	visible = false
-	position = Vector2(30, 160)
-	size = Vector2(660, 900)
+	position = Vector2(30, 110)
+	size = Vector2(660, 1000)
 
 	add_child(UITheme.make_panel(size))
 
@@ -22,16 +22,17 @@ func _init() -> void:
 	add_child(title)
 
 	var body := Label.new()
-	body.text = HELP_TEXT
-	body.position = Vector2(30, 100)
-	body.size = Vector2(600, 660)
+	# Wrap before sizing: with wrapping off, the size is clamped to the longest line.
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.text = HELP_TEXT
+	body.position = Vector2(30, 95)
+	body.size = Vector2(600, 780)
 	body.add_theme_font_size_override("font_size", 21)
 	add_child(body)
 
 	var close := Button.new()
 	close.text = "확인"
-	close.position = Vector2(180, 790)
+	close.position = Vector2(180, 895)
 	close.size = Vector2(300, 80)
 	close.add_theme_font_size_override("font_size", 30)
 	close.pressed.connect(hide_panel)

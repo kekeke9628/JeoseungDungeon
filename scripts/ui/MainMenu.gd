@@ -46,11 +46,11 @@ func _make_button(text: String, pos: Vector2, btn_size: Vector2, font_size: int,
 
 func _make_label(text: String, pos: Vector2, lbl_size: Vector2, font_size: int, parent: Control) -> Label:
 	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # before size, or size clamps to the longest line
 	l.text = text
 	l.position = pos
 	l.size = lbl_size
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(l)
 	return l
