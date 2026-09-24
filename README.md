@@ -12,6 +12,8 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 - 헤드리스 검증:
   - `Godot --headless --path . res://tests/SmokeTest.tscn` (로직 스모크 테스트, 실패 시 exit 1)
   - `Godot --headless --path . res://tests/BalanceSim.tscn` (클래스별 봇 밸런스 시뮬레이션, 약 5분)
+- 린트: `gdlint <파일>` (gdtoolkit). Godot의 `--check-only --script` 는 오토로드를 못 찾아 이 프로젝트에선 오탐이 난다
+- Claude Code on the web: `.claude/hooks/session-start.sh` 가 세션 시작 시 Godot 4.7.1·Pillow·numpy·gdtoolkit 을 설치하고 임포트 캐시를 만든다(처음 약 15초)
 
 ## 구현 현황
 ### Phase 1 (완료)
