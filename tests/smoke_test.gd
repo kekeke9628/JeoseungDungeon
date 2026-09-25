@@ -79,6 +79,7 @@ func _run() -> void:
 	await _test_polish()
 	await _test_floor_theme()
 	await _test_features()
+	await _test_loot_and_sight()
 
 func _test_content() -> void:
 	print("[content]")
@@ -808,3 +809,48 @@ func _test_features() -> void:
 	p.try_move(dir)
 	var after: int = p.stats.max_hp + p.stats.attack_max + p.stats.defense
 	check(after > before and DungeonState.tile_at(altar_pos) == DungeonState.Tile.FLOOR, "an altar grants a permanent boon and is used up")
+
+func _test_loot_and_sight() -> void:
+	print("[loot drops and talisman sight]")
+	await _new_game("hwarang")
+	_god_mode()
+	_clear_monsters()
+	var p: Player = game.player
+	# a monster at (2, 0) on a talisman, the player right beside it at (3, 0)
+	DungeonState.clear()
+	for x in range(5):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(3, 0))
+	var ground: ItemData = ItemDatabase.get_item("talisman")
+	DungeonState.place_item(Vector2i(2, 0), ground)
+	var mongdal: MonsterData = MonsterDatabase.get_monster("mongdal")
+	var chance: float = mongdal.loot_chance
+	mongdal.loot_chance = 1.0
+	game._spawn_monster_at(mongdal, Vector2i(2, 0)).take_damage(9999)
+	mongdal.loot_chance = chance
+	var items: int = DungeonState.items_at.size()
+	check(DungeonState.items_at.values().has(ground), "a drop keeps the item already on the tile")
+	check(items == 2, "the drop lands beside it (%d items on the floor)" % items)
+	check(not DungeonState.items_at.has(p.grid_pos), "the drop never lands under the player")
+
+	# row 0 open floor, row 1 solid wall, row 2 open floor
+	_clear_monsters()
+	DungeonState.clear()
+	for x in range(8):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+		DungeonState.grid[Vector2i(x, 1)] = DungeonState.Tile.WALL
+		DungeonState.grid[Vector2i(x, 2)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(0, 0))
+	var bulgasari: MonsterData = MonsterDatabase.get_monster("bulgasari")
+	var full: int = bulgasari.stats.max_hp
+	var hidden: Monster = game._spawn_monster_at(bulgasari, Vector2i(0, 2))
+	game._refresh_vision()
+	check(not hidden.visible, "a monster behind a wall is out of sight")
+	GameState.add_item(ground)
+	var used: bool = ItemEffects.use_item(ground, p)
+	check(not used and hidden.current_hp == full, "a talisman ignores a monster out of sight")
+	var seen: Monster = game._spawn_monster_at(bulgasari, Vector2i(4, 0))
+	game._refresh_vision()
+	used = ItemEffects.use_item(ground, p)
+	check(used and seen.current_hp < full, "a talisman strikes the visible monster")
+	check(hidden.current_hp == full, "the nearer hidden monster is left alone")

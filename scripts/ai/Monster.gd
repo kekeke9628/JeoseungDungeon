@@ -74,8 +74,7 @@ func die() -> void:
 	if data.loot_item_ids.size() > 0 and randf() < data.loot_chance:
 		var item_id: String = data.loot_item_ids[randi() % data.loot_item_ids.size()]
 		var item: ItemData = ItemDatabase.get_item(item_id)
-		if item:
-			DungeonState.place_item(grid_pos, item)
+		if item and DungeonState.drop_item(grid_pos, item):
 			MessageBus.log_message("%s 무언가를 떨어뜨렸다." % Josa.i_ga(display_name))
 	if data.is_boss and data.max_floor >= Constants.MAX_FLOOR:
 		MessageBus.log_message("%s 물리쳤다! 저승을 탈출했다!" % Josa.eul_reul(display_name))
