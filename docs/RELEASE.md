@@ -28,6 +28,11 @@
   - 디버그 빌드는 상점 결제가 모의 결제라 무료로 지급됨(4절). 테스트용으로만 배포
 - 디버그: 기기 연결 후 에디터의 원격 디버그 버튼 (USB 디버깅 켜기)
 - 릴리스: `프로젝트 > 내보내기 > Android (AAB release)` -> `build/JeoseungDungeon.aab`
+- 웹 (아이폰·PC 브라우저, 확인됨): `godot --headless --path . --export-release "Web" build/web/index.html`
+  - 단일 스레드 빌드(`variant/thread_support=false`)라 COOP/COEP 같은 특별한 서버 헤더 없이 아무 정적 호스팅에서나 돈다(itch.io, GitHub Pages 등)
+  - 결과: `build/web/` 에 index.html·index.wasm(약 40MB)·index.pck. zip으로 묶으면 약 10MB
+  - 모바일 크기(390x844) Chromium에서 새 게임 -> 도움말 -> 이동·줍기까지 확인. 실제 iPhone Safari는 아직 확인하지 못함
+  - 브라우저 정책상 소리는 첫 탭 이후에 나오고, 저장은 그 브라우저 안에만 남는다
 - 빌드 전 `res://tests/SmokeTest.tscn` 헤드리스 테스트 통과 확인
 - 내보낸 뒤 `tests/export_check.gd` 로 내보낸 빌드를 확인(README의 헤드리스 검증 참고). 편집기에서는 멀쩡해도 내보낸 빌드에서만 데이터가 비는 문제를 잡는다
 
