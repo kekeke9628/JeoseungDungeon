@@ -102,11 +102,12 @@ static func _equip(item: ItemData, player: Player) -> bool:
 	MessageBus.log_message("%s 장착했다." % Josa.eul_reul(item.identified_name))
 	return true
 
+## The closest monster within max_range that the player can see.
 static func _nearest_monster(player: Player, max_range: int):
 	var best = null
 	var best_dist: int = 9999
 	for m in TurnManager.monsters:
-		if not is_instance_valid(m) or not m.is_alive:
+		if not is_instance_valid(m) or not m.is_alive or not DungeonState.visible_tiles.has(m.grid_pos):
 			continue
 		var d: int = maxi(absi(m.grid_pos.x - player.grid_pos.x), absi(m.grid_pos.y - player.grid_pos.y))
 		if d <= max_range and d < best_dist:

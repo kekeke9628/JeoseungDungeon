@@ -7,6 +7,12 @@ enum Tile { WALL, FLOOR, DOOR, STAIRS_DOWN, TRAP, TRAP_SPENT, WELL, ALTAR }
 
 signal changed
 
+## Where a drop may land: the tile itself, then its neighbours, nearest first.
+const DROP_OFFSETS: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),
+]
+
 var grid: Dictionary = {}          # Vector2i -> Tile
 var width: int = 0
 var height: int = 0
@@ -70,6 +76,18 @@ func move_actor(actor, from_pos: Vector2i, to_pos: Vector2i) -> void:
 func place_item(pos: Vector2i, item: ItemData) -> void:
 	items_at[pos] = item
 	changed.emit()
+
+## Drops an item at pos, or beside it if pos already holds one, so a drop
+## never replaces loot on the ground. Tiles with an actor are skipped: items are
+## picked up by stepping onto them, so one under the player would be stuck.
+## Returns false if there was no room.
+func drop_item(pos: Vector2i, item: ItemData) -> bool:
+	for d in DROP_OFFSETS:
+		var spot: Vector2i = pos + d
+		if is_walkable(spot) and not items_at.has(spot) and not actors_at.has(spot):
+			place_item(spot, item)
+			return true
+	return false
 
 func take_item_at(pos: Vector2i) -> ItemData:
 	if items_at.has(pos):
