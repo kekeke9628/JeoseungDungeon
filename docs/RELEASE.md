@@ -29,6 +29,7 @@
 - 디버그: 기기 연결 후 에디터의 원격 디버그 버튼 (USB 디버깅 켜기)
 - 릴리스: `프로젝트 > 내보내기 > Android (AAB release)` -> `build/JeoseungDungeon.aab`
 - 빌드 전 `res://tests/SmokeTest.tscn` 헤드리스 테스트 통과 확인
+- 내보낸 뒤 `tests/export_check.gd` 로 내보낸 빌드를 확인(README의 헤드리스 검증 참고). 편집기에서는 멀쩡해도 내보낸 빌드에서만 데이터가 비는 문제를 잡는다
 
 ## 4. 인앱결제 연결 (필수 — 지금은 미연결)
 - 현재 `autoloads/IAPManager.gd` 는 디버그 빌드에서만 모의 결제로 동작하고, **릴리스에서는 구매가 막힙니다(안전장치).**

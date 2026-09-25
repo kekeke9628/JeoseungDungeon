@@ -95,13 +95,12 @@ func _build_class_box() -> void:
 	var back := _make_button("뒤로", Vector2(210, 1180), Vector2(300, 70), 26, _class_box)
 	back.pressed.connect(_show_main)
 
+## Uses ResourceLoader.list_directory because exported builds store the .tres
+## files as .tres.remap, which a DirAccess listing would not match.
 func _load_classes() -> Array[CharacterClassData]:
 	var out: Array[CharacterClassData] = []
-	var dir := DirAccess.open(CLASS_DIR)
-	if dir == null:
-		return out
 	var names: Array[String] = []
-	for f in dir.get_files():
+	for f in ResourceLoader.list_directory(CLASS_DIR):
 		if f.ends_with(".tres"):
 			names.append(f)
 	names.sort()

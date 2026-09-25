@@ -7,20 +7,16 @@ var monsters: Dictionary = {}  # id -> MonsterData
 func _ready() -> void:
 	_load_monsters()
 
+## ResourceLoader.list_directory, not DirAccess: in an exported build the .tres
+## files are stored as .tres.remap, so a DirAccess listing finds none of them.
 func _load_monsters() -> void:
-	var dir := DirAccess.open("res://resources/monsters")
-	if dir == null:
-		push_warning("MonsterDatabase: res://resources/monsters not found")
-		return
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
+	for file_name in ResourceLoader.list_directory("res://resources/monsters"):
 		if file_name.ends_with(".tres"):
 			var res := load("res://resources/monsters/%s" % file_name) as MonsterData
 			if res:
 				monsters[res.id] = res
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	if monsters.is_empty():
+		push_warning("MonsterDatabase: no monsters found in res://resources/monsters")
 
 func get_monster(id: String) -> MonsterData:
 	return monsters.get(id, null)
