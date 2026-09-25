@@ -7,6 +7,10 @@ extends Actor
 ## - RANGED: attacks from up to 3 tiles away without needing to close in.
 ## - AMBUSH: stays still until the player is within 2 tiles, then attacks like AGGRESSIVE.
 ##
+## Like the player, monsters move and strike only up, down, left and right, so
+## a monster standing diagonally must step beside the player before it can hit.
+## RANGED attacks still reach any tile in range.
+##
 ## Monsters do not see traps either, so any move can spring one (see TrapSystem).
 
 ## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
@@ -25,9 +29,10 @@ func take_ai_turn() -> void:
 	if player_actor == null or not player_actor.is_alive:
 		return
 	var dist: int = _chebyshev_distance(grid_pos, player_actor.grid_pos)
+	var beside: bool = _is_beside(player_actor.grid_pos)
 	match data.ai_type:
 		MonsterData.AIType.WANDER:
-			if dist <= 1:
+			if beside:
 				_attack(player_actor)
 			elif dist <= data.detect_radius and randf() < 0.5:
 				_move_toward(player_actor.grid_pos)
@@ -39,12 +44,12 @@ func take_ai_turn() -> void:
 			elif dist <= data.detect_radius:
 				_move_toward(player_actor.grid_pos)
 		MonsterData.AIType.AMBUSH:
-			if dist <= 1:
+			if beside:
 				_attack(player_actor)
 			elif dist <= 2:
 				_move_toward(player_actor.grid_pos)
 		_:  # AGGRESSIVE and default
-			if dist <= 1:
+			if beside:
 				_attack(player_actor)
 			elif dist <= data.detect_radius:
 				_move_toward(player_actor.grid_pos)
@@ -94,14 +99,16 @@ func _attack(target) -> void:
 	else:
 		MessageBus.log_message("%s의 공격이 빗나갔다." % display_name)
 
+## Steps one square toward target_pos along the longer axis first, falling
+## back to the other axis when that square is blocked.
 func _move_toward(target_pos: Vector2i) -> void:
-	var dx: int = signi(target_pos.x - grid_pos.x)
-	var dy: int = signi(target_pos.y - grid_pos.y)
+	var delta: Vector2i = target_pos - grid_pos
 	var candidates: Array[Vector2i] = [
-		grid_pos + Vector2i(dx, dy),
-		grid_pos + Vector2i(dx, 0),
-		grid_pos + Vector2i(0, dy),
+		grid_pos + Vector2i(signi(delta.x), 0),
+		grid_pos + Vector2i(0, signi(delta.y)),
 	]
+	if absi(delta.y) > absi(delta.x):
+		candidates.reverse()
 	for next_pos in candidates:
 		if next_pos != grid_pos and DungeonState.is_walkable(next_pos) and DungeonState.get_actor_at(next_pos) == null:
 			DungeonState.move_actor(self, grid_pos, next_pos)
@@ -120,6 +127,10 @@ func _move_random() -> void:
 
 func _chebyshev_distance(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+## True when pos is directly up, down, left or right of this monster.
+func _is_beside(pos: Vector2i) -> bool:
+	return absi(pos.x - grid_pos.x) + absi(pos.y - grid_pos.y) == 1
 
 func _try_special(target) -> void:
 	if data.special.is_empty() or not (target is Player) or not target.is_alive:

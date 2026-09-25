@@ -44,6 +44,10 @@ var _fade_tween: Tween
 var _seen_monsters: Dictionary = {}
 var _seen_species: Dictionary = {}
 var _last_autosave_turn: int = 0
+## Set when a living boss turned the player back at the stairs. The player then
+## has to step off and on again to descend, so killing the boss from the stairs
+## leaves time to pick up its drop.
+var _held_on_stairs: bool = false
 
 func _ready() -> void:
 	randomize()
@@ -442,11 +446,25 @@ func _after_player_action() -> void:
 	if _ended or not is_instance_valid(player) or not player.is_alive:
 		return
 	if DungeonState.is_stairs(player.grid_pos) and GameState.current_floor < Constants.MAX_FLOOR:
-		_load_floor(GameState.current_floor + 1)
-		return
+		if not _held_on_stairs:
+			var guard: Monster = _floor_boss()
+			if guard == null:
+				_load_floor(GameState.current_floor + 1)
+				return
+			_held_on_stairs = true
+			MessageBus.log_message("%s 길을 막고 있다. 쓰러뜨려야 내려갈 수 있다." % Josa.i_ga(guard.display_name))
+	else:
+		_held_on_stairs = false
 	_refresh_vision()
 	if GameState.turn_count - _last_autosave_turn >= AUTOSAVE_TURNS:
 		_autosave()
+
+## The boss still alive on this floor, if any. It holds the stairs until it falls.
+func _floor_boss() -> Monster:
+	for m in TurnManager.monsters:
+		if is_instance_valid(m) and m.is_alive and m.data.is_boss:
+			return m
+	return null
 
 func _update_skill_button() -> void:
 	var c: CharacterClassData = GameState.player_class
