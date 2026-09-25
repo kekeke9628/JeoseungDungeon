@@ -1,7 +1,7 @@
 # 출시 가이드 (Android 우선)
 
 이 문서는 저승던전을 스토어에 내기까지 남은 작업을 순서대로 적은 것입니다.
-개발 PC에는 현재 Godot 내보내기 템플릿, JDK, Android SDK가 없어서 **실제 빌드는 아직 해보지 못했습니다.**
+디버그 APK는 2026-09-25에 Linux(클라우드 세션)에서 빌드·서명·검증까지 확인했습니다(3절). **릴리스 AAB(Gradle 빌드)와 실기기 실행은 아직 해보지 못했습니다.**
 
 ## 1. 빌드 환경 준비
 1. Godot 4.7.1 에디터 -> `편집기 > 내보내기 템플릿 관리` 에서 4.7.1 템플릿 설치
@@ -17,6 +17,15 @@
 - Play App Signing 사용을 권장 (업로드 키만 로컬 보관)
 
 ## 3. 빌드
+- 디버그 APK (Gradle 없이, 확인됨):
+  1. 4.7.1 내보내기 템플릿 설치 (Android 파일 `android_debug.apk` 등만 있어도 됨)
+  2. Android SDK 경로 지정. `dl.google.com` 에 접근할 수 없는 환경에서는 Ubuntu 패키지 `android-sdk-build-tools`, `adb` 로 대신할 수 있음(`/usr/lib/android-sdk`, apksigner 31). JDK 21로도 서명됨
+  3. 디버그 키스토어: `keytool -genkeypair -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug,O=Android,C=US"`
+  4. `godot --headless --path . --export-debug "Android (APK debug)" build/JeoseungDungeon-debug.apk`
+  5. 결과: 약 28MB, arm64-v8a, minSdk 24(Android 7.0), APK 서명 v2/v3. 32비트 기기에서 시험하려면 프리셋의 `architectures/armeabi-v7a` 를 켜면 됨(약 56MB)
+  - Android 내보내기에는 `rendering/textures/vram_compression/import_etc2_astc=true` 가 필요함(`project.godot` 에 설정됨)
+  - Gradle 없이 내보낼 때는 프리셋의 Min/Target SDK를 비워 둬야 함(템플릿의 디버그 프리셋은 비어 있음)
+  - 디버그 빌드는 상점 결제가 모의 결제라 무료로 지급됨(4절). 테스트용으로만 배포
 - 디버그: 기기 연결 후 에디터의 원격 디버그 버튼 (USB 디버깅 켜기)
 - 릴리스: `프로젝트 > 내보내기 > Android (AAB release)` -> `build/JeoseungDungeon.aab`
 - 빌드 전 `res://tests/SmokeTest.tscn` 헤드리스 테스트 통과 확인
