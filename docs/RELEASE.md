@@ -33,6 +33,7 @@
   - 결과: `build/web/` 에 index.html·index.wasm(약 40MB)·index.pck. zip으로 묶으면 약 10MB
   - 모바일 크기(390x844) Chromium에서 새 게임 -> 도움말 -> 이동·줍기까지 확인. 실제 iPhone Safari는 아직 확인하지 못함
   - 브라우저 정책상 소리는 첫 탭 이후에 나오고, 저장은 그 브라우저 안에만 남는다
+  - GitHub Pages 자동 게시: `.github/workflows/pages.yml` (저장소 공개 + Settings > Pages > Source를 GitHub Actions로 설정 필요)
 - 빌드 전 `res://tests/SmokeTest.tscn` 헤드리스 테스트 통과 확인
 - 내보낸 뒤 `tests/export_check.gd` 로 내보낸 빌드를 확인(README의 헤드리스 검증 참고). 편집기에서는 멀쩡해도 내보낸 빌드에서만 데이터가 비는 문제를 잡는다
 

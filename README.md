@@ -7,6 +7,7 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 ![타이틀](docs/screenshots/title.png) ![플레이](docs/screenshots/gameplay.png)
 
 ## 실행
+- 웹에서 바로 하기(휴대폰 브라우저 포함): https://kekeke9628.github.io/JeoseungDungeon/ — `master` 에 병합될 때마다 `.github/workflows/pages.yml` 이 스모크 테스트·웹 빌드·내보낸 빌드 확인을 거쳐 자동으로 게시한다
 - 에디터: Godot 4.7.1로 `project.godot` 열기 -> F5 (메인 메뉴에서 시작)
 - 조작: 방향키/WASD 이동(적에게 부딪히면 공격), Space 대기, E/Q 기술, I 가방. 모바일은 화면 D-pad와 기술 버튼.
 - 헤드리스 검증:
