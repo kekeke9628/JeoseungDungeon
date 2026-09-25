@@ -80,6 +80,7 @@ func _run() -> void:
 	await _test_floor_theme()
 	await _test_features()
 	await _test_loot_and_sight()
+	await _test_four_way_and_boss_stairs()
 
 func _test_content() -> void:
 	print("[content]")
@@ -854,3 +855,61 @@ func _test_loot_and_sight() -> void:
 	used = ItemEffects.use_item(ground, p)
 	check(used and seen.current_hp < full, "a talisman strikes the visible monster")
 	check(hidden.current_hp == full, "the nearer hidden monster is left alone")
+
+func _test_four_way_and_boss_stairs() -> void:
+	print("[four-way monsters and boss stairs]")
+	var lines: Array[String] = []
+	var log_line := func(text): lines.append(text)
+	MessageBus.message_logged.connect(log_line)
+	await _new_game("hwarang")
+	_god_mode()
+	_clear_monsters()
+	var p: Player = game.player
+	DungeonState.clear()
+	for x in range(6):
+		for y in range(6):
+			DungeonState.grid[Vector2i(x, y)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(2, 2))
+	var dokkaebi_data: MonsterData = MonsterDatabase.get_monster("dokkaebi")
+	var dokkaebi: Monster = game._spawn_monster_at(dokkaebi_data, Vector2i(3, 3))
+	var hp: int = p.current_hp
+	dokkaebi.take_ai_turn()
+	var moved: Vector2i = dokkaebi.grid_pos - Vector2i(3, 3)
+	var gap: Vector2i = dokkaebi.grid_pos - p.grid_pos
+	var one_step: bool = absi(moved.x) + absi(moved.y) == 1
+	check(p.current_hp == hp and one_step, "a diagonal monster steps instead of striking")
+	check(absi(gap.x) + absi(gap.y) == 1, "the step puts it beside the player")
+	lines.clear()
+	dokkaebi.take_ai_turn()
+	check(lines.any(func(l): return l.begins_with("도깨비")), "a monster beside the player attacks")
+	DungeonState.move_actor(dokkaebi, dokkaebi.grid_pos, Vector2i(5, 5))
+	dokkaebi.take_ai_turn()
+	moved = dokkaebi.grid_pos - Vector2i(5, 5)
+	check(absi(moved.x) + absi(moved.y) == 1, "a chasing monster steps up, down, left or right")
+
+	await _new_game("hwarang")
+	_god_mode()
+	p = game.player
+	game._load_floor(10)
+	var stairs: Vector2i = DungeonState.stairs_pos
+	var boss = _find_boss()
+	DungeonState.move_actor(boss, stairs, _adjacent_free_tile(stairs))
+	lines.clear()
+	DungeonState.move_actor(p, p.grid_pos, stairs)
+	game._after_player_action()
+	check(GameState.current_floor == 10, "the stairs stay shut while the floor boss lives")
+	var told: Array = lines.filter(func(l): return l.contains("길을 막고 있다"))
+	check(told.size() == 1, "the player is told the boss blocks the way")
+	game._after_player_action()
+	told = lines.filter(func(l): return l.contains("길을 막고 있다"))
+	check(told.size() == 1, "the warning is not repeated while standing on the stairs")
+	boss.take_damage(99999)
+	game._after_player_action()
+	check(GameState.current_floor == 10, "killing the boss from the stairs leaves time for its drop")
+	var off: Vector2i = _adjacent_free_tile(stairs)
+	DungeonState.move_actor(p, stairs, off)
+	game._after_player_action()
+	DungeonState.move_actor(p, off, stairs)
+	game._after_player_action()
+	check(GameState.current_floor == 11, "with the boss gone the stairs lead down")
+	MessageBus.message_logged.disconnect(log_line)

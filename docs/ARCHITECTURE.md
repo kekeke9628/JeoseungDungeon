@@ -4,7 +4,7 @@
 1. 입력(`Game.gd`): 방향 버튼/키/탭 -> `_on_direction_pressed` 등. 기절이면 `_guard_stun()` 이 행동을 소모.
 2. `Player.try_move` 가 이동/공격/줍기/함정(`TrapSystem.trigger`) 처리 후 `TurnManager.end_player_turn()`.
 3. `TurnManager`: 턴 수 +1 -> 플레이어 상태이상 틱(독 피해) -> 기술 재사용 대기 -1 -> 자연 회복 -> 모든 몬스터가 `take_ai_turn()`. 몬스터가 이동한 칸에 함정이 있으면 같은 `TrapSystem.trigger` 를 탄다.
-4. `Game._after_player_action()`: 계단이면 다음 층 로드, 아니면 시야(FOV) 갱신.
+4. `Game._after_player_action()`: 계단이면 다음 층 로드, 아니면 시야(FOV) 갱신. 층 보스가 살아 있으면 계단이 막히고(`_floor_boss`), 한 번 막힌 뒤에는 계단에서 내려섰다가 다시 밟아야 내려간다(계단 위에서 보스를 잡아도 전리품을 주울 틈이 있게).
 
 ## 전역 상태(오토로드)
 | 이름 | 역할 |
