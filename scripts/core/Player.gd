@@ -65,6 +65,12 @@ func _log_attack_result(result: Dictionary, target) -> void:
 	else:
 		MessageBus.log_message("%s에 대한 공격이 빗나갔다." % target.display_name)
 
+## Picks up whatever lies where the player now stands. Walking does this on
+## each step; a teleport calls it too, or an item under the landing spot could
+## never be picked up without stepping off and back on.
+func pick_up_here() -> void:
+	_check_pickup(grid_pos)
+
 func _check_pickup(pos: Vector2i) -> void:
 	var item: ItemData = DungeonState.take_item_at(pos)
 	if item:

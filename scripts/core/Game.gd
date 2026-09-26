@@ -10,6 +10,9 @@ const BOSS_ESCORTS: int = 3
 const LOOT_PER_FLOOR_MIN: int = 4
 const LOOT_PER_FLOOR_MAX: int = 6
 const GOLD_CHANCE: float = 0.4
+## Share of floor item drops that are equipment. Picking uniformly over item
+## types would make gear most of the loot now that there are six slots.
+const LOOT_GEAR_SHARE: float = 0.5
 const HP_PER_LEVEL: int = 9
 const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
 const REVIVE_HP_FRACTION: float = 0.5
@@ -265,12 +268,16 @@ func _spawn_monster_at(m_data: MonsterData, pos: Vector2i) -> Monster:
 	return m
 
 func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> void:
-	var pool: Array[ItemData] = []
+	var gear: Array[ItemData] = []
+	var other: Array[ItemData] = []
 	for id in ItemDatabase.get_all_ids():
 		var item: ItemData = ItemDatabase.get_item(id)
 		if item.min_floor <= floor_num:
-			pool.append(item)
-	if pool.is_empty():
+			if item.is_equipment():
+				gear.append(item)
+			else:
+				other.append(item)
+	if gear.is_empty() and other.is_empty():
 		return
 	var count: int = randi_range(LOOT_PER_FLOOR_MIN, LOOT_PER_FLOOR_MAX)
 	for i in range(count):
@@ -280,6 +287,8 @@ func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> v
 		if randf() < GOLD_CHANCE:
 			DungeonState.place_gold(pos, randi_range(5, 25) + floor_num * 3)
 		else:
+			var use_gear: bool = other.is_empty() or (not gear.is_empty() and randf() < LOOT_GEAR_SHARE)
+			var pool: Array[ItemData] = gear if use_gear else other
 			DungeonState.place_item(pos, pool[randi() % pool.size()])
 
 func _random_pos_in(room: Rect2i) -> Vector2i:

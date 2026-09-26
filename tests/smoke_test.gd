@@ -87,6 +87,7 @@ func _run() -> void:
 	await _test_equipment_slots()
 	await _test_paper_doll()
 	await _test_attack_and_motion()
+	await _test_teleport_pickup()
 
 func _test_content() -> void:
 	print("[content]")
@@ -1099,3 +1100,30 @@ func _test_attack_and_motion() -> void:
 	check(fx_count.call() == 1, "a kill leaves a death effect")
 	await get_tree().create_timer(DUNGEON_FX_WAIT).timeout
 	check(fx_count.call() == 0 and game.world.get_child_count() < before, "the effect removes itself")
+
+func _test_teleport_pickup() -> void:
+	print("[teleport pickup]")
+	await _new_game("mudang")
+	_clear_monsters()
+	var p: Player = game.player
+	# only two floor tiles: the teleport can land only where the item lies
+	DungeonState.clear()
+	DungeonState.grid[Vector2i(0, 0)] = DungeonState.Tile.FLOOR
+	DungeonState.grid[Vector2i(5, 5)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(0, 0))
+	var wine: ItemData = ItemDatabase.get_item("flower_wine")
+	DungeonState.place_item(Vector2i(5, 5), wine)
+	var before: int = 0
+	for e in GameState.inventory:
+		if e.item_data == wine:
+			before = e.quantity
+	var talisman: ItemData = ItemDatabase.get_item("teleport_talisman")
+	GameState.add_item(talisman)
+	ItemEffects.use_item(talisman, p)
+	var after: int = 0
+	for e in GameState.inventory:
+		if e.item_data == wine:
+			after = e.quantity
+	check(p.grid_pos == Vector2i(5, 5), "the teleport lands on the only free tile")
+	var left_on_floor: bool = DungeonState.items_at.has(p.grid_pos)
+	check(after == before + 1 and not left_on_floor, "what lies there is picked up")

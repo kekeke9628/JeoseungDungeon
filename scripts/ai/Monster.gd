@@ -15,13 +15,22 @@ extends Actor
 
 ## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
 const SUMMON_TIER_DROP: int = 6
+## Difficulty knob: every monster's attack is scaled by this when it spawns.
+## Raised when monsters lost their diagonal strikes and the player gained four
+## more equipment slots. With tests/BalanceSim.tscn the bot won 19 of 48 runs at
+## 1.12 (1.0: 17/24, 1.10: 10/24, 1.15: 6/24, 1.25: 2/24).
+const ATTACK_SCALE: float = 1.12
 
 var data: MonsterData
 var _summoned: bool = false
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
-	setup(p_data.stats, p_data.color, p_data.glyph, p_data.display_name, p_data.id)
+	# A copy: the MonsterData stats resource is shared by every monster of the kind.
+	var scaled: ActorStats = p_data.stats.duplicate()
+	scaled.attack_min = roundi(scaled.attack_min * ATTACK_SCALE)
+	scaled.attack_max = roundi(scaled.attack_max * ATTACK_SCALE)
+	setup(scaled, p_data.color, p_data.glyph, p_data.display_name, p_data.id)
 	TurnManager.register_monster(self)
 
 func take_ai_turn() -> void:
