@@ -6,6 +6,7 @@ extends Control
 signal direction_pressed(dir: Vector2i)
 signal wait_pressed
 signal skill_pressed
+signal attack_pressed
 
 const BTN_SIZE: float = 90.0
 
@@ -20,6 +21,9 @@ func _init() -> void:
 	_add_button("대기", Vector2(140, 1090), func(): wait_pressed.emit())
 	_add_button("→", Vector2(240, 1090), func(): direction_pressed.emit(Vector2i(1, 0)))
 	_add_button("↓", Vector2(140, 1180), func(): direction_pressed.emit(Vector2i(0, 1)))
+	var attack := _add_button("공격", Vector2(440, 998), func(): attack_pressed.emit())
+	attack.size = Vector2(240, 84)
+	attack.add_theme_font_size_override("font_size", 28)
 	_skill_button = _add_button("기술", Vector2(440, 1090), func(): skill_pressed.emit())
 	_skill_button.size = Vector2(240, 90)
 	_skill_button.add_theme_font_size_override("font_size", 26)

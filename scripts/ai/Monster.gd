@@ -86,9 +86,11 @@ func die() -> void:
 		GameState.game_over.emit(true)
 	elif data.is_boss:
 		MessageBus.log_message("%s 쓰러뜨렸다. 저승 더 깊은 곳으로 길이 열렸다." % Josa.eul_reul(display_name))
+	_spawn_death_fx()
 	super.die()
 
 func _attack(target) -> void:
+	play_attack(target.grid_pos)
 	var result := CombatSystem.resolve_attack(self, target)
 	AudioManager.play("hurt" if result.hit else "miss")
 	if result.hit:

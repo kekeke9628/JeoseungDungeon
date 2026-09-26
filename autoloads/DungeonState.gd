@@ -68,7 +68,7 @@ func clear_actor_at(pos: Vector2i) -> void:
 func move_actor(actor, from_pos: Vector2i, to_pos: Vector2i) -> void:
 	actors_at.erase(from_pos)
 	actors_at[to_pos] = actor
-	actor.move_to_grid(to_pos)
+	actor.move_to_grid(to_pos, true)
 	if tile_at(to_pos) == Tile.DOOR:
 		AudioManager.play("door")
 		set_tile(to_pos, Tile.FLOOR)
