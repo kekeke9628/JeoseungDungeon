@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "heungnip"
+item_type = 6
+identified_name = "흑립"
+unidentified_name = "검은 갓"
+description = "선비가 쓰던 검은 갓."
+identified_description = "흑립. 방어력 +2, 최대 체력 +4."
+stackable = false
+is_cursed = false
+min_floor = 6
+value_a = 0
+value_b = 2
+bonus_hp = 4
+gold_value = 20

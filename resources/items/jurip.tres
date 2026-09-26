@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "jurip"
+item_type = 6
+identified_name = "주립"
+unidentified_name = "붉은 갓"
+description = "붉은 옻칠을 한 갓. 무관이 썼다고 한다."
+identified_description = "주립. 방어력 +3, 최대 체력 +8."
+stackable = false
+is_cursed = false
+min_floor = 12
+value_a = 0
+value_b = 3
+bonus_hp = 8
+gold_value = 40

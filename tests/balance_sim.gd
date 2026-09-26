@@ -97,10 +97,7 @@ func _use_consumables(p) -> bool:
 			return true
 	for e in GameState.inventory.duplicate():
 		var d: ItemData = e.item_data
-		if d.item_type == ItemData.ItemType.WEAPON and (GameState.equipped_weapon == null or d.value_a > GameState.equipped_weapon.value_a):
-			game._on_item_chosen(d)
-			return true
-		if d.item_type == ItemData.ItemType.ARMOR and (GameState.equipped_armor == null or d.value_b > GameState.equipped_armor.value_b):
+		if d.is_equipment() and _gear_score(d) > _gear_score(GameState.equipped.get(d.equip_slot())):
 			game._on_item_chosen(d)
 			return true
 	var near: int = _nearest_monster_dist(p)
@@ -115,6 +112,10 @@ func _use_consumables(p) -> bool:
 			game._on_item_chosen(talisman)
 			return true
 	return false
+
+## How much the bot values a piece of gear; -1 for an empty slot.
+func _gear_score(d: ItemData) -> int:
+	return -1 if d == null else d.value_a * 3 + d.value_b * 2 + d.bonus_hp
 
 func _pick_goal(p) -> Vector2i:
 	var best: Vector2i = DungeonState.stairs_pos

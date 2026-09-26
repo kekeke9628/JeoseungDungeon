@@ -1,9 +1,16 @@
 class_name ItemData
 extends Resource
-## Data-driven definition for a single item type (weapon, armor, potion, scroll, gold).
+## Data-driven definition for a single item type (equipment, potion, scroll, gold).
 ## Instances live as .tres files under res://resources/items/.
 
-enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC }
+## New types go at the end: .tres files store the enum as its number.
+enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC, HEAD, AMULET, RING, BOOTS }
+
+## The body slot each kind of equipment is worn in (see GameState.EQUIP_SLOTS).
+const EQUIP_SLOT_OF := {
+	ItemType.HEAD: "head", ItemType.WEAPON: "weapon", ItemType.ARMOR: "armor",
+	ItemType.AMULET: "amulet", ItemType.RING: "ring", ItemType.BOOTS: "boots",
+}
 
 @export var id: String = ""
 @export var item_type: ItemType = ItemType.MISC
@@ -17,11 +24,20 @@ enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC }
 @export var is_cursed: bool = false
 
 @export_group("Effect Values")
-## Weapon: bonus damage added to attack roll. Potion: HP restored. Scroll: effect magnitude.
+## Equipment: attack bonus. Potion: HP restored. Scroll: effect magnitude.
 @export var value_a: int = 0
-## Armor: defense bonus.
+## Equipment: defense bonus. Elixir: permanent max HP gain.
 @export var value_b: int = 0
+## Equipment: max HP while worn.
+@export var bonus_hp: int = 0
 @export var gold_value: int = 10
+
+## The slot this item is worn in, or "" if it is not equipment.
+func equip_slot() -> String:
+	return EQUIP_SLOT_OF.get(item_type, "")
+
+func is_equipment() -> bool:
+	return equip_slot() != ""
 
 func get_display_name(identified: bool) -> String:
 	if identified or item_type == ItemType.GOLD:

@@ -7,6 +7,9 @@ const TALISMAN_RANGE: int = 6
 static func use_item(item: ItemData, player: Player) -> bool:
 	var used: bool = false
 	var sfx: String = ""
+	if item.is_equipment():
+		used = _equip(item, player)
+		sfx = "equip"
 	match item.item_type:
 		ItemData.ItemType.POTION:
 			used = _drink(item, player)
@@ -14,9 +17,6 @@ static func use_item(item: ItemData, player: Player) -> bool:
 		ItemData.ItemType.SCROLL:
 			used = _read(item, player)
 			sfx = "scroll"
-		ItemData.ItemType.WEAPON, ItemData.ItemType.ARMOR:
-			used = _equip(item, player)
-			sfx = "equip"
 	if used:
 		AudioManager.play(sfx)
 	return used
@@ -80,27 +80,40 @@ static func _read(item: ItemData, player: Player) -> bool:
 			return true
 	return false
 
+## Wears item in its body slot; whatever was there goes back into the bag.
 static func _equip(item: ItemData, player: Player) -> bool:
+	var slot: String = item.equip_slot()
 	GameState.identify(item.id)
 	GameState.remove_item(item)
-	if item.item_type == ItemData.ItemType.WEAPON:
-		var old: ItemData = GameState.equipped_weapon
-		if old != null:
-			player.stats.attack_min -= old.value_a
-			player.stats.attack_max -= old.value_a
-			GameState.add_item(old)
-		GameState.equipped_weapon = item
-		player.stats.attack_min += item.value_a
-		player.stats.attack_max += item.value_a
-	else:
-		var old_armor: ItemData = GameState.equipped_armor
-		if old_armor != null:
-			player.stats.defense -= old_armor.value_b
-			GameState.add_item(old_armor)
-		GameState.equipped_armor = item
-		player.stats.defense += item.value_b
+	var old: ItemData = GameState.equipped.get(slot)
+	if old != null:
+		_apply_bonuses(player, old, -1)
+		GameState.add_item(old)
+	GameState.equipped[slot] = item
+	_apply_bonuses(player, item, 1)
 	MessageBus.log_message("%s 장착했다." % Josa.eul_reul(item.identified_name))
 	return true
+
+## Takes off what is worn in slot and puts it in the bag. Returns false if the
+## slot was empty (no turn is spent).
+static func unequip(slot: String, player: Player) -> bool:
+	var item: ItemData = GameState.equipped.get(slot)
+	if item == null:
+		return false
+	GameState.equipped.erase(slot)
+	_apply_bonuses(player, item, -1)
+	GameState.add_item(item)
+	AudioManager.play("equip")
+	MessageBus.log_message("%s 벗었다." % Josa.eul_reul(item.identified_name))
+	return true
+
+## Adds (factor 1) or removes (factor -1) an item's stat bonuses.
+static func _apply_bonuses(player: Player, item: ItemData, factor: int) -> void:
+	player.stats.attack_min += factor * item.value_a
+	player.stats.attack_max += factor * item.value_a
+	player.stats.defense += factor * item.value_b
+	if item.bonus_hp != 0:
+		player.change_max_hp(factor * item.bonus_hp)
 
 ## The closest monster within max_range that the player can see.
 static func _nearest_monster(player: Player, max_range: int):

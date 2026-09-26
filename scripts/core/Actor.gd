@@ -97,6 +97,14 @@ func heal(amount: int) -> void:
 	_show_popup("+%d" % amount, COLOR_HEAL)
 	hp_changed.emit(current_hp, stats.max_hp)
 
+## Raises or lowers max HP and moves current HP by the same amount (never below
+## 1), so taking gear on and off can never be used to heal.
+func change_max_hp(delta: int) -> void:
+	stats.max_hp += delta
+	current_hp = clampi(current_hp + delta, 1, stats.max_hp)
+	_update_hp_bar()
+	hp_changed.emit(current_hp, stats.max_hp)
+
 func die() -> void:
 	is_alive = false
 	died.emit(self)

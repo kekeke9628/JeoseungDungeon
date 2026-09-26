@@ -9,6 +9,9 @@ signal level_changed(new_level: int, xp: int, xp_to_next: int)
 signal leveled_up(new_level: int)
 signal skill_changed
 
+## Body slots, in the order the paper doll lists them.
+const EQUIP_SLOTS: Array[String] = ["head", "weapon", "armor", "amulet", "ring", "boots"]
+
 var current_floor: int = 1
 var gold: int = 0
 var player_class: CharacterClassData
@@ -23,8 +26,20 @@ var last_attacker: String = ""
 ## Set by the menu before Game.tscn loads; survive reset_run().
 var selected_class_id: String = "mudang"
 var pending_continue: bool = false
-var equipped_weapon: ItemData
-var equipped_armor: ItemData
+
+## slot name -> ItemData worn there. Empty slots have no key.
+var equipped: Dictionary = {}
+## Shorthands kept for the two original slots.
+var equipped_weapon: ItemData:
+	get:
+		return equipped.get("weapon")
+	set(value):
+		_set_equipped("weapon", value)
+var equipped_armor: ItemData:
+	get:
+		return equipped.get("armor")
+	set(value):
+		_set_equipped("armor", value)
 
 ## Array of {"item_data": ItemData, "quantity": int}
 var inventory: Array[Dictionary] = []
@@ -40,8 +55,7 @@ func reset_run() -> void:
 	turn_count = 0
 	skill_cooldown_left = 0
 	last_attacker = ""
-	equipped_weapon = null
-	equipped_armor = null
+	equipped.clear()
 	inventory.clear()
 	identified_types.clear()
 
@@ -82,3 +96,9 @@ func add_xp(amount: int) -> void:
 		player_xp_to_next = int(player_xp_to_next * 1.4)
 		leveled_up.emit(player_level)
 	level_changed.emit(player_level, player_xp, player_xp_to_next)
+
+func _set_equipped(slot: String, item: ItemData) -> void:
+	if item == null:
+		equipped.erase(slot)
+	else:
+		equipped[slot] = item

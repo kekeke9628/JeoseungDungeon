@@ -81,10 +81,14 @@ func _run() -> void:
 	await _test_features()
 	await _test_loot_and_sight()
 	await _test_four_way_and_boss_stairs()
+	await _test_equipment_slots()
 
 func _test_content() -> void:
 	print("[content]")
-	check(ItemDatabase.items.size() == 17, "17 items loaded (got %d)" % ItemDatabase.items.size())
+	check(ItemDatabase.items.size() == 29, "29 items loaded (got %d)" % ItemDatabase.items.size())
+	for slot in GameState.EQUIP_SLOTS:
+		var any_for_slot: bool = ItemDatabase.items.values().any(func(it): return it.equip_slot() == slot)
+		check(any_for_slot, "some item fits the %s slot" % slot)
 	check(MonsterDatabase.monsters.size() == 17, "17 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
 	check(MonsterDatabase.get_boss_for_floor(10) != null, "boss on floor 10")
 	check(MonsterDatabase.get_boss_for_floor(20) != null, "boss on floor 20")
@@ -913,3 +917,82 @@ func _test_four_way_and_boss_stairs() -> void:
 	game._after_player_action()
 	check(GameState.current_floor == 11, "with the boss gone the stairs lead down")
 	MessageBus.message_logged.disconnect(log_line)
+
+func _make_gear(id: String, type: ItemData.ItemType, atk: int, def: int, hp: int) -> ItemData:
+	var gear := ItemData.new()
+	gear.id = id
+	gear.item_type = type
+	gear.identified_name = id
+	gear.value_a = atk
+	gear.value_b = def
+	gear.bonus_hp = hp
+	return gear
+
+func _test_equipment_slots() -> void:
+	print("[equipment slots]")
+	await _new_game("hwarang")
+	var p: Player = game.player
+	var weapon: ItemData = GameState.equipped_weapon
+	var worn_weapon = GameState.equipped.get("weapon")
+	check(weapon != null and worn_weapon == weapon, "the weapon shorthand reads the weapon slot")
+	var hat := _make_gear("test_hat", ItemData.ItemType.HEAD, 0, 2, 5)
+	var hat2 := _make_gear("test_hat2", ItemData.ItemType.HEAD, 1, 0, 0)
+	var defense: int = p.stats.defense
+	var max_hp: int = p.stats.max_hp
+	p.current_hp = 10
+	GameState.add_item(hat)
+	ItemEffects.use_item(hat, p)
+	check(GameState.equipped.get("head") == hat, "a hat is worn in the head slot")
+	var gained: bool = p.stats.defense == defense + 2 and p.stats.max_hp == max_hp + 5
+	check(gained, "gear adds its defense and max HP")
+	check(p.current_hp == 15, "gaining max HP also gains that much HP")
+	var in_bag := func(it: ItemData) -> bool:
+		return GameState.inventory.any(func(e): return e.item_data == it)
+	check(not in_bag.call(hat), "a worn item leaves the bag")
+	var attack: int = p.stats.attack_max
+	GameState.add_item(hat2)
+	ItemEffects.use_item(hat2, p)
+	var head = GameState.equipped.get("head")
+	check(head == hat2 and in_bag.call(hat), "a new hat sends the old one to the bag")
+	var swapped: bool = p.stats.defense == defense and p.stats.max_hp == max_hp
+	check(swapped and p.stats.attack_max == attack + 1, "swapping gear swaps the bonuses")
+	check(p.current_hp == 10, "taking gear off and on can never be used to heal")
+	var took_off: bool = ItemEffects.unequip("head", p)
+	check(took_off and not GameState.equipped.has("head"), "gear can be taken off")
+	check(p.stats.attack_max == attack and in_bag.call(hat2), "taken-off gear loses its bonus")
+	check(not ItemEffects.unequip("head", p), "taking off an empty slot does nothing")
+
+	# every slot survives a save and continue, without its bonus being added twice
+	for id in ["satgat", "hemp_garment", "aengmagi_norigae", "eun_garakji", "jipsin"]:
+		var gear: ItemData = ItemDatabase.get_item(id)
+		GameState.add_item(gear)
+		ItemEffects.use_item(gear, p)
+	var worn: Dictionary = {}
+	for slot in GameState.equipped.keys():
+		worn[slot] = GameState.equipped[slot].id
+	var stats: Array = [p.stats.attack_max, p.stats.defense, p.stats.max_hp]
+	SaveManager.save_run(p)
+	await _new_game("hwarang", true)
+	var restored: Dictionary = {}
+	for slot in GameState.equipped.keys():
+		restored[slot] = GameState.equipped[slot].id
+	check(restored == worn and worn.size() == 6, "continue restores all six slots (%s)" % restored)
+	var p2: Player = game.player
+	var stats2: Array = [p2.stats.attack_max, p2.stats.defense, p2.stats.max_hp]
+	check(stats2 == stats, "continue does not add worn bonuses twice")
+
+	# a save from before the paper doll only knew the weapon and armor
+	var old_save: Dictionary = SaveManager.load_data()
+	old_save.erase("equipped")
+	old_save["weapon"] = "rusty_sword"
+	old_save["armor"] = "hemp_garment"
+	var f := FileAccess.open(SaveManager.save_path, FileAccess.WRITE)
+	f.store_string(JSON.stringify(old_save))
+	f = null
+	await _new_game("hwarang", true)
+	var old_weapon: ItemData = GameState.equipped_weapon
+	var old_armor: ItemData = GameState.equipped_armor
+	check(old_weapon != null and old_weapon.id == "rusty_sword", "an older save keeps its weapon")
+	check(old_armor != null and old_armor.id == "hemp_garment", "an older save keeps its armor")
+	check(GameState.equipped.size() == 2, "an older save fills only those two slots")
+	SaveManager.delete_save()
