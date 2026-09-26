@@ -19,6 +19,7 @@ func try_move(dir: Vector2i) -> bool:
 	var target := grid_pos + dir
 	var blocking_actor = DungeonState.get_actor_at(target)
 	if blocking_actor != null and blocking_actor != self:
+		play_attack(target)
 		var result := CombatSystem.roll_attack(self, blocking_actor)
 		_log_attack_result(result, blocking_actor)
 		if result.hit:

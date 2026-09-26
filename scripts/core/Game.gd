@@ -117,6 +117,7 @@ func _build_ui() -> void:
 	dpad.direction_pressed.connect(_on_direction_pressed)
 	dpad.wait_pressed.connect(_on_wait_pressed)
 	dpad.skill_pressed.connect(_on_skill_pressed)
+	dpad.attack_pressed.connect(_on_attack_pressed)
 	inventory_panel.item_chosen.connect(_on_item_chosen)
 	inventory_panel.unequip_chosen.connect(_on_unequip_chosen)
 	game_over_screen.restart_pressed.connect(_on_restart)
@@ -336,6 +337,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_wait_pressed()
 		KEY_E, KEY_Q:
 			_on_skill_pressed()
+		KEY_F:
+			_on_attack_pressed()
 		KEY_I:
 			inventory_panel.toggle()
 
@@ -420,6 +423,29 @@ func _on_wait_pressed() -> void:
 	if _can_act() and not _guard_stun():
 		player.wait_turn()
 		_after_player_action()
+
+## Basic attack: strikes a monster right beside the player (up, down, left or
+## right), the weakest one if there are several. Bumping into one does the same.
+func _on_attack_pressed() -> void:
+	_walk_token += 1
+	if not _can_act() or _guard_stun():
+		return
+	var target: Monster = _attack_target()
+	if target == null:
+		MessageBus.log_message("공격할 적이 곁에 없다.")
+		return
+	if player.try_move(target.grid_pos - player.grid_pos):
+		_after_player_action()
+
+func _attack_target() -> Monster:
+	var best: Monster = null
+	for m in TurnManager.monsters:
+		if not is_instance_valid(m) or not m.is_alive:
+			continue
+		var d: Vector2i = m.grid_pos - player.grid_pos
+		if absi(d.x) + absi(d.y) == 1 and (best == null or m.current_hp < best.current_hp):
+			best = m
+	return best
 
 func _on_skill_pressed() -> void:
 	_walk_token += 1

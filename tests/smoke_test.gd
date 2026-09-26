@@ -3,6 +3,9 @@ extends Node
 ##   Godot --headless --path . res://tests/SmokeTest.tscn
 ## Exits with code 1 if any check fails.
 
+## Long enough for every popup and death effect to finish and free itself.
+const DUNGEON_FX_WAIT: float = 1.0
+
 var failures: int = 0
 var game: Node2D
 
@@ -83,6 +86,7 @@ func _run() -> void:
 	await _test_four_way_and_boss_stairs()
 	await _test_equipment_slots()
 	await _test_paper_doll()
+	await _test_attack_and_motion()
 
 func _test_content() -> void:
 	print("[content]")
@@ -1032,3 +1036,66 @@ func _test_paper_doll() -> void:
 	var says_empty: bool = bag._detail.text.contains("비어")
 	check(not bag._action.visible and says_empty, "an empty slot says it is empty")
 	bag.hide_panel()
+
+func _test_attack_and_motion() -> void:
+	print("[attack button and motion]")
+	var lines: Array[String] = []
+	var log_line := func(text): lines.append(text)
+	MessageBus.message_logged.connect(log_line)
+	await _new_game("hwarang")
+	_god_mode()
+	_clear_monsters()
+	var p: Player = game.player
+	DungeonState.clear()
+	for x in range(6):
+		for y in range(6):
+			DungeonState.grid[Vector2i(x, y)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(2, 2))
+	var turns: int = GameState.turn_count
+	game._on_attack_pressed()
+	var told: bool = lines.any(func(l): return l.contains("곁에 없다"))
+	check(GameState.turn_count == turns and told, "attacking with nobody beside spends no turn")
+
+	# the weaker of two monsters beside the player is hit; one on the diagonal is not
+	game._spawn_monster_at(MonsterDatabase.get_monster("bulgasari"), Vector2i(3, 2))
+	var weak: Monster = game._spawn_monster_at(MonsterDatabase.get_monster("okjol"), Vector2i(2, 3))
+	weak.current_hp = 10
+	var diag: Monster = game._spawn_monster_at(MonsterDatabase.get_monster("yacha"), Vector2i(3, 3))
+	diag.current_hp = 1
+	lines.clear()
+	game._on_attack_pressed()
+	check(GameState.turn_count == turns + 1, "the attack button spends a turn")
+	var hit := func(name: String) -> bool: return lines.any(func(l): return l.begins_with(name))
+	check(hit.call("옥졸에"), "it strikes the weakest monster beside the player")
+	check(not hit.call("야차에"), "a monster on the diagonal is not a target")
+	MessageBus.message_logged.disconnect(log_line)
+
+	# a one-tile step slides; a teleport snaps
+	_clear_monsters()
+	DungeonState.actors_at.clear()
+	game._place_player(Vector2i(0, 0))
+	DungeonState.move_actor(p, Vector2i(0, 0), Vector2i(1, 0))
+	var target := Vector2(Constants.TILE_SIZE, 0)
+	check(p.grid_pos == Vector2i(1, 0) and p.position != target, "a step starts sliding over")
+	await get_tree().create_timer(0.25).timeout
+	check(p.position == target and p.body.position == Vector2.ZERO, "the step lands on the tile")
+	DungeonState.move_actor(p, Vector2i(1, 0), Vector2i(4, 4))
+	var far := Vector2(4, 4) * Constants.TILE_SIZE
+	check(p.position == far, "a teleport snaps straight there")
+	p.play_attack(Vector2i(5, 4))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(p.body.position.x > 0.0, "an attack leans toward the target")
+	await get_tree().create_timer(0.3).timeout
+	check(p.body.position == Vector2.ZERO, "and comes back to rest")
+
+	# a visible kill leaves a fading copy that cleans itself up
+	var ghost: Monster = game._spawn_monster_at(MonsterDatabase.get_monster("mongdal"), Vector2i(4, 3))
+	game._refresh_vision()
+	var before: int = game.world.get_child_count()
+	ghost.take_damage(9999)
+	var fx_count := func() -> int:
+		return game.world.get_children().filter(func(c): return c is TextureRect).size()
+	check(fx_count.call() == 1, "a kill leaves a death effect")
+	await get_tree().create_timer(DUNGEON_FX_WAIT).timeout
+	check(fx_count.call() == 0 and game.world.get_child_count() < before, "the effect removes itself")
