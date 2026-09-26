@@ -82,6 +82,7 @@ func _run() -> void:
 	await _test_loot_and_sight()
 	await _test_four_way_and_boss_stairs()
 	await _test_equipment_slots()
+	await _test_paper_doll()
 
 func _test_content() -> void:
 	print("[content]")
@@ -996,3 +997,38 @@ func _test_equipment_slots() -> void:
 	check(old_armor != null and old_armor.id == "hemp_garment", "an older save keeps its armor")
 	check(GameState.equipped.size() == 2, "an older save fills only those two slots")
 	SaveManager.delete_save()
+
+func _test_paper_doll() -> void:
+	print("[paper doll bag]")
+	await _new_game("hwarang")
+	_god_mode()
+	_clear_monsters()
+	var p: Player = game.player
+	var bag: InventoryPanel = game.inventory_panel
+	var hat: ItemData = ItemDatabase.get_item("satgat")
+	GameState.add_item(hat)
+	bag.show_panel()
+	var turns: int = GameState.turn_count
+	bag._on_bag_pressed(hat)
+	check(bag._action.visible and bag._action.text == "장착", "a bag item offers to be worn")
+	bag._on_action_pressed()
+	check(GameState.equipped.get("head") == hat, "wearing from the bag puts it on")
+	check(GameState.turn_count == turns + 1, "wearing takes a turn")
+	var head_icon: Texture2D = bag._slot_buttons["head"].icon
+	check(bag._sel_slot == "head" and head_icon != null, "the doll shows where it went")
+	check(bag._action.text == "벗기", "a worn slot offers to take it off")
+	bag._on_action_pressed()
+	check(not GameState.equipped.has("head"), "taking off from the doll works")
+	check(GameState.turn_count == turns + 2, "taking off takes a turn")
+	check(bag._sel_item == hat and bag._sel_slot == "", "what was taken off is selected in the bag")
+	var wine: ItemData = ItemDatabase.get_item("flower_wine")
+	GameState.add_item(wine)
+	p.current_hp = 5
+	bag._on_bag_pressed(wine)
+	check(bag._action.text == "마시기", "a potion offers to be drunk")
+	bag._on_action_pressed()
+	check(p.current_hp > 5, "drinking from the bag heals")
+	bag._on_slot_pressed("ring")
+	var says_empty: bool = bag._detail.text.contains("비어")
+	check(not bag._action.visible and says_empty, "an empty slot says it is empty")
+	bag.hide_panel()

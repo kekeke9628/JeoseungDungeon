@@ -118,6 +118,7 @@ func _build_ui() -> void:
 	dpad.wait_pressed.connect(_on_wait_pressed)
 	dpad.skill_pressed.connect(_on_skill_pressed)
 	inventory_panel.item_chosen.connect(_on_item_chosen)
+	inventory_panel.unequip_chosen.connect(_on_unequip_chosen)
 	game_over_screen.restart_pressed.connect(_on_restart)
 	game_over_screen.revive_pressed.connect(_on_revive)
 
@@ -439,6 +440,14 @@ func _on_item_chosen(item: ItemData) -> void:
 	if _ended or not is_instance_valid(player) or not player.is_alive or _guard_stun():
 		return
 	if ItemEffects.use_item(item, player):
+		TurnManager.end_player_turn()
+		_after_player_action()
+
+func _on_unequip_chosen(slot: String) -> void:
+	_walk_token += 1
+	if _ended or not is_instance_valid(player) or not player.is_alive or _guard_stun():
+		return
+	if ItemEffects.unequip(slot, player):
 		TurnManager.end_player_turn()
 		_after_player_action()
 
