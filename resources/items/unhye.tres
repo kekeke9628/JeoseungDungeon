@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "unhye"
+item_type = 9
+identified_name = "운혜"
+unidentified_name = "비단신"
+description = "구름무늬를 수놓은 비단신."
+identified_description = "운혜. 방어력 +2, 최대 체력 +8."
+stackable = false
+is_cursed = false
+min_floor = 13
+value_a = 0
+value_b = 2
+bonus_hp = 8
+gold_value = 40

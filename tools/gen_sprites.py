@@ -87,6 +87,18 @@ ITEM_ICONS = {
     "teleport_talisman": (T.SCROLL, (150, 190, 245), (40, 70, 170)),
     "clairvoyance_talisman": (T.SCROLL, (195, 150, 235), (90, 40, 150)),
     "gold": (T.COIN, (245, 205, 60), (245, 205, 60)),
+    "satgat": (T.HAT, (205, 175, 115), (150, 110, 65)),
+    "heungnip": (T.HAT, (55, 50, 65), (170, 45, 55)),
+    "jurip": (T.HAT, (185, 50, 50), (240, 200, 60)),
+    "aengmagi_norigae": (T.NORIGAE, (225, 205, 160), (200, 40, 50)),
+    "bichwi_norigae": (T.NORIGAE, (80, 190, 140), (200, 40, 70)),
+    "samjak_norigae": (T.NORIGAE, (240, 205, 80), (210, 50, 170)),
+    "eun_garakji": (T.RING, (200, 205, 220), (245, 245, 255)),
+    "ok_garakji": (T.RING, (110, 195, 150), (225, 250, 230)),
+    "geum_garakji": (T.RING, (240, 200, 70), (230, 60, 60)),
+    "jipsin": (T.SHOES, (205, 175, 115), (150, 110, 65)),
+    "mokhwa": (T.SHOES, (55, 50, 65), (200, 200, 210)),
+    "unhye": (T.SHOES, (130, 90, 190), (240, 200, 80)),
 }
 
 

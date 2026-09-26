@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ok_garakji"
+item_type = 8
+identified_name = "옥가락지"
+unidentified_name = "푸른 가락지"
+description = "서늘한 푸른 가락지."
+identified_description = "옥가락지. 공격력 +2."
+stackable = false
+is_cursed = false
+min_floor = 9
+value_a = 2
+value_b = 0
+bonus_hp = 0
+gold_value = 30

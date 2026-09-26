@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "mokhwa"
+item_type = 9
+identified_name = "목화"
+unidentified_name = "검은 가죽신"
+description = "관리가 신던 검은 가죽 장화."
+identified_description = "목화. 방어력 +1, 최대 체력 +5."
+stackable = false
+is_cursed = false
+min_floor = 7
+value_a = 0
+value_b = 1
+bonus_hp = 5
+gold_value = 20

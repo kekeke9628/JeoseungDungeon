@@ -19,6 +19,9 @@ func save_run(player: Player) -> void:
 	var inv: Array = []
 	for entry in GameState.inventory:
 		inv.append({"id": entry.item_data.id, "qty": entry.quantity})
+	var worn: Dictionary = {}
+	for slot in GameState.equipped.keys():
+		worn[slot] = GameState.equipped[slot].id
 	var data: Dictionary = {
 		"version": SAVE_VERSION,
 		"class_id": GameState.player_class.id,
@@ -39,8 +42,7 @@ func save_run(player: Player) -> void:
 		"turns": GameState.turn_count,
 		"skill_cd": GameState.skill_cooldown_left,
 		"statuses": player.statuses.duplicate(),
-		"weapon": GameState.equipped_weapon.id if GameState.equipped_weapon else "",
-		"armor": GameState.equipped_armor.id if GameState.equipped_armor else "",
+		"equipped": worn,
 		"inventory": inv,
 		"identified": GameState.identified_types.keys(),
 		"killer": GameState.last_attacker,
@@ -92,8 +94,16 @@ func apply(data: Dictionary, player: Player) -> void:
 		if item:
 			for i in range(int(e.qty)):
 				GameState.add_item(item)
-	GameState.equipped_weapon = ItemDatabase.get_item(str(data.weapon)) if str(data.weapon) != "" else null
-	GameState.equipped_armor = ItemDatabase.get_item(str(data.armor)) if str(data.armor) != "" else null
+	# Worn gear is already counted in the saved stats, so it is only put back
+	# in its slots here, not re-applied. Saves from before the paper doll kept
+	# just "weapon" and "armor".
+	GameState.equipped.clear()
+	var worn = data.get("equipped", {"weapon": data.get("weapon", ""), "armor": data.get("armor", "")})
+	if typeof(worn) == TYPE_DICTIONARY:
+		for slot in worn.keys():
+			var gear: ItemData = ItemDatabase.get_item(str(worn[slot]))
+			if gear != null and gear.equip_slot() == str(slot):
+				GameState.equipped[str(slot)] = gear
 	GameState.identified_types.clear()
 	for id in data.identified:
 		GameState.identified_types[str(id)] = true

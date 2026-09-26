@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "satgat"
+item_type = 6
+identified_name = "삿갓"
+unidentified_name = "낡은 삿갓"
+description = "햇빛을 가리는 대나무 삿갓."
+identified_description = "삿갓. 방어력 +1."
+stackable = false
+is_cursed = false
+min_floor = 1
+value_a = 0
+value_b = 1
+bonus_hp = 0
+gold_value = 8

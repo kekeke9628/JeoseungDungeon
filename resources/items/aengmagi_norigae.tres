@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "aengmagi_norigae"
+item_type = 7
+identified_name = "액막이 노리개"
+unidentified_name = "매듭 노리개"
+description = "붉은 매듭이 달린 작은 노리개."
+identified_description = "액막이 노리개. 최대 체력 +6."
+stackable = false
+is_cursed = false
+min_floor = 2
+value_a = 0
+value_b = 0
+bonus_hp = 6
+gold_value = 12
