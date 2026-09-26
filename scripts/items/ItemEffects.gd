@@ -54,6 +54,7 @@ static func _read(item: ItemData, player: Player) -> bool:
 			GameState.identify(item.id)
 			GameState.remove_item(item)
 			DungeonState.move_actor(player, player.grid_pos, dest)
+			player.pick_up_here()
 			MessageBus.log_message("몸이 순식간에 다른 곳으로 옮겨졌다!")
 			return true
 		"clairvoyance_talisman":

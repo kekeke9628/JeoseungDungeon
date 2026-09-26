@@ -39,7 +39,9 @@ static func trigger(actor: Actor, pos: Vector2i) -> bool:
 			elif seen:
 				MessageBus.log_message("%s 함정에 빠져 어디론가 사라졌다." % Josa.i_ga(actor.display_name))
 			DungeonState.move_actor(actor, actor.grid_pos, dest)
-			if not is_player:
+			if is_player:
+				actor.pick_up_here()
+			else:
 				actor.visible = DungeonState.visible_tiles.has(dest)
 			return true
 	var dmg: int = BASE_DAMAGE + GameState.current_floor
