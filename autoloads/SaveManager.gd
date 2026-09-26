@@ -41,6 +41,7 @@ func save_run(player: Player) -> void:
 		"gold": GameState.gold,
 		"turns": GameState.turn_count,
 		"skill_cd": GameState.skill_cooldown_left,
+		"hunger": GameState.hunger,
 		"statuses": player.statuses.duplicate(),
 		"equipped": worn,
 		"inventory": inv,
@@ -84,6 +85,7 @@ func apply(data: Dictionary, player: Player) -> void:
 	GameState.gold = int(data.gold)
 	GameState.turn_count = int(data.turns)
 	GameState.skill_cooldown_left = int(data.skill_cd)
+	GameState.hunger = int(data.get("hunger", 0))
 	var saved_statuses = data.get("statuses", {})
 	if typeof(saved_statuses) == TYPE_DICTIONARY:
 		for key in saved_statuses.keys():

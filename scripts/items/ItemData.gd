@@ -4,7 +4,7 @@ extends Resource
 ## Instances live as .tres files under res://resources/items/.
 
 ## New types go at the end: .tres files store the enum as its number.
-enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC, HEAD, AMULET, RING, BOOTS }
+enum ItemType { WEAPON, ARMOR, POTION, SCROLL, GOLD, MISC, HEAD, AMULET, RING, BOOTS, FOOD }
 
 ## The body slot each kind of equipment is worn in (see GameState.EQUIP_SLOTS).
 const EQUIP_SLOT_OF := {
@@ -25,6 +25,7 @@ const EQUIP_SLOT_OF := {
 
 @export_group("Effect Values")
 ## Equipment: attack bonus. Potion: HP restored. Scroll: effect magnitude.
+## Food: hunger taken away, in turns.
 @export var value_a: int = 0
 ## Equipment: defense bonus. Elixir: permanent max HP gain.
 @export var value_b: int = 0
@@ -39,12 +40,16 @@ func equip_slot() -> String:
 func is_equipment() -> bool:
 	return equip_slot() != ""
 
+## Gold and food are never a mystery: they need no identifying.
+func is_always_known() -> bool:
+	return item_type == ItemType.GOLD or item_type == ItemType.FOOD
+
 func get_display_name(identified: bool) -> String:
-	if identified or item_type == ItemType.GOLD:
+	if identified or is_always_known():
 		return identified_name
 	return unidentified_name
 
 func get_display_description(identified: bool) -> String:
-	if identified:
+	if identified or is_always_known():
 		return identified_description
 	return description

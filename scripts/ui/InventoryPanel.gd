@@ -271,6 +271,9 @@ func _refresh_detail() -> void:
 	elif _sel_item.item_type == ItemData.ItemType.SCROLL:
 		_action.text = "읽기"
 		_action.visible = true
+	elif _sel_item.item_type == ItemData.ItemType.FOOD:
+		_action.text = "먹기"
+		_action.visible = true
 	_detail.text = "\n".join(lines)
 
 func _on_bag_pressed(item: ItemData) -> void:

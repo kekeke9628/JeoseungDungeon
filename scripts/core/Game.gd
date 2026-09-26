@@ -13,6 +13,11 @@ const GOLD_CHANCE: float = 0.4
 ## Share of floor item drops that are equipment. Picking uniformly over item
 ## types would make gear most of the loot now that there are six slots.
 const LOOT_GEAR_SHARE: float = 0.5
+## Every floor lays out exactly one meal, like Shattered Pixel Dungeon's food
+## per floor, drawn by these weights (id -> weight). On average it covers about
+## 190 turns of hunger (see Player.HUNGRY), so an unhurried pace is fed but
+## resting on every floor is not.
+const FOOD_WEIGHTS := {"gotgam": 40, "jumeokbap": 45, "sajatbap": 15}
 const HP_PER_LEVEL: int = 9
 const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
 const REVIVE_HP_FRACTION: float = 0.5
@@ -47,10 +52,9 @@ var _fade_tween: Tween
 var _seen_monsters: Dictionary = {}
 var _seen_species: Dictionary = {}
 var _last_autosave_turn: int = 0
-## Set when a living boss turned the player back at the stairs. The player then
-## has to step off and on again to descend, so killing the boss from the stairs
-## leaves time to pick up its drop.
-var _held_on_stairs: bool = false
+## Whether the player stood on the stairs after the last action, so the hint
+## is logged once on arrival rather than every turn spent there.
+var _was_on_stairs: bool = false
 
 func _ready() -> void:
 	randomize()
@@ -121,6 +125,7 @@ func _build_ui() -> void:
 	dpad.wait_pressed.connect(_on_wait_pressed)
 	dpad.skill_pressed.connect(_on_skill_pressed)
 	dpad.attack_pressed.connect(_on_attack_pressed)
+	dpad.descend_pressed.connect(_on_descend_pressed)
 	inventory_panel.item_chosen.connect(_on_item_chosen)
 	inventory_panel.unequip_chosen.connect(_on_unequip_chosen)
 	game_over_screen.restart_pressed.connect(_on_restart)
@@ -173,6 +178,7 @@ func _load_floor(floor_num: int) -> void:
 	var rooms: Array[Rect2i] = result.rooms
 	_spawn_monsters(floor_num, rooms, result.stairs_pos)
 	_spawn_loot(floor_num, rooms, result.start_pos)
+	_spawn_food(rooms, result.start_pos)
 
 	if floor_num > 1:
 		AudioManager.play("stairs")
@@ -226,6 +232,8 @@ func _enter_floor(floor_num: int, arrival_text: String) -> void:
 	MessageBus.log_message(arrival_text)
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
 	_seen_monsters.clear()
+	_was_on_stairs = false
+	_update_stairs(false)
 	_refresh_vision()
 	_fade_in()
 	_autosave()
@@ -272,7 +280,7 @@ func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> v
 	var other: Array[ItemData] = []
 	for id in ItemDatabase.get_all_ids():
 		var item: ItemData = ItemDatabase.get_item(id)
-		if item.min_floor <= floor_num:
+		if item.min_floor <= floor_num and item.item_type != ItemData.ItemType.FOOD:
 			if item.is_equipment():
 				gear.append(item)
 			else:
@@ -290,6 +298,29 @@ func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> v
 			var use_gear: bool = other.is_empty() or (not gear.is_empty() and randf() < LOOT_GEAR_SHARE)
 			var pool: Array[ItemData] = gear if use_gear else other
 			DungeonState.place_item(pos, pool[randi() % pool.size()])
+
+## Places this floor's one meal on a free floor tile away from the start.
+func _spawn_food(rooms: Array[Rect2i], start_pos: Vector2i) -> void:
+	var food: ItemData = ItemDatabase.get_item(_pick_food_id())
+	if food == null:
+		return
+	for _attempt in range(20):
+		var pos: Vector2i = _random_pos_in(rooms[randi() % rooms.size()])
+		var taken: bool = DungeonState.items_at.has(pos) or DungeonState.gold_at.has(pos)
+		if pos != start_pos and DungeonState.tile_at(pos) == DungeonState.Tile.FLOOR and not taken:
+			DungeonState.place_item(pos, food)
+			return
+
+func _pick_food_id() -> String:
+	var total: int = 0
+	for id in FOOD_WEIGHTS:
+		total += FOOD_WEIGHTS[id]
+	var roll: int = randi() % total
+	for id in FOOD_WEIGHTS:
+		roll -= FOOD_WEIGHTS[id]
+		if roll < 0:
+			return id
+	return ""
 
 func _random_pos_in(room: Rect2i) -> Vector2i:
 	return Vector2i(
@@ -348,6 +379,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_skill_pressed()
 		KEY_F:
 			_on_attack_pressed()
+		KEY_ENTER, KEY_KP_ENTER, KEY_PERIOD:
+			_on_descend_pressed()
 		KEY_I:
 			inventory_panel.toggle()
 
@@ -489,19 +522,42 @@ func _on_unequip_chosen(slot: String) -> void:
 func _after_player_action() -> void:
 	if _ended or not is_instance_valid(player) or not player.is_alive:
 		return
-	if DungeonState.is_stairs(player.grid_pos) and GameState.current_floor < Constants.MAX_FLOOR:
-		if not _held_on_stairs:
-			var guard: Monster = _floor_boss()
-			if guard == null:
-				_load_floor(GameState.current_floor + 1)
-				return
-			_held_on_stairs = true
-			MessageBus.log_message("%s 길을 막고 있다. 쓰러뜨려야 내려갈 수 있다." % Josa.i_ga(guard.display_name))
-	else:
-		_held_on_stairs = false
+	_update_stairs(true)
 	_refresh_vision()
 	if GameState.turn_count - _last_autosave_turn >= AUTOSAVE_TURNS:
 		_autosave()
+
+## Stairs lead down only when the player asks: walking onto them (or through
+## them on a tapped route) just shows the descend button. announce logs a hint
+## when the player has just stepped on.
+func _update_stairs(announce: bool) -> void:
+	var on_stairs: bool = _stairs_lead_down(player.grid_pos)
+	if announce and on_stairs and not _was_on_stairs:
+		var guard: Monster = _floor_boss()
+		if guard != null:
+			_log_blocked_by(guard)
+		else:
+			MessageBus.log_message("아래층으로 내려가는 계단이다. [내려가기]를 누르면 내려간다.")
+	_was_on_stairs = on_stairs
+	dpad.set_descend_visible(on_stairs)
+
+func _stairs_lead_down(pos: Vector2i) -> bool:
+	return DungeonState.is_stairs(pos) and GameState.current_floor < Constants.MAX_FLOOR
+
+## Takes the stairs the player stands on. It costs no turn: the floor is left
+## behind. A living floor boss still bars the way.
+func _on_descend_pressed() -> void:
+	_walk_token += 1
+	if not _can_act() or not _stairs_lead_down(player.grid_pos) or _guard_stun():
+		return
+	var guard: Monster = _floor_boss()
+	if guard != null:
+		_log_blocked_by(guard)
+		return
+	_load_floor(GameState.current_floor + 1)
+
+func _log_blocked_by(guard: Monster) -> void:
+	MessageBus.log_message("%s 길을 막고 있다. 쓰러뜨려야 내려갈 수 있다." % Josa.i_ga(guard.display_name))
 
 ## The boss still alive on this floor, if any. It holds the stairs until it falls.
 func _floor_boss() -> Monster:
@@ -550,6 +606,9 @@ func _on_game_over(victory: bool) -> void:
 func _on_revive() -> void:
 	if not _ended or not is_instance_valid(player) or player.is_alive or not IAPManager.consume_revive():
 		return
+	# A starved player would only starve again at once. Cleared first, so the
+	# status line revive() refreshes no longer says starving.
+	GameState.hunger = 0
 	player.revive(REVIVE_HP_FRACTION)
 	_ended = false
 	game_over_screen.visible = false
@@ -557,6 +616,7 @@ func _on_revive() -> void:
 	AudioManager.play("levelup")
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(GameState.current_floor) != null else "ambient")
 	_autosave()
+	_update_stairs(false)
 	_refresh_vision()
 
 ## Records the run once. A defeat that can still be revived is recorded only

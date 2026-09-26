@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "sajatbap"
+item_type = 10
+identified_name = "사잣밥"
+unidentified_name = "사잣밥"
+description = "저승사자에게 올리는 밥상에서 덜어 온 밥. 한 그릇이면 한참을 버틴다."
+identified_description = "저승사자에게 올리는 밥상에서 덜어 온 밥. 한 그릇이면 한참을 버틴다. 먹으면 배고픔이 400턴만큼 가신다."
+stackable = true
+is_cursed = false
+min_floor = 1
+value_a = 400
+value_b = 0
+gold_value = 25
