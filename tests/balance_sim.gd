@@ -38,7 +38,8 @@ func _ready() -> void:
 			if victory:
 				wins += 1
 			floor_sum += GameState.current_floor
-			print("%-8s run %2d: %s floor=%2d lv=%2d turns=%4d" % [cls, run, "WIN " if victory else "LOSE", GameState.current_floor, GameState.player_level, GameState.turn_count])
+			var cause: String = "" if victory else " by=%s" % GameState.last_attacker
+			print("%-8s run %2d: %s floor=%2d lv=%2d turns=%4d%s" % [cls, run, "WIN " if victory else "LOSE", GameState.current_floor, GameState.player_level, GameState.turn_count, cause])
 			game.queue_free()
 			await get_tree().process_frame
 		print("== %s: wins %d/%d, avg floor %.1f" % [cls, wins, RUNS_PER_CLASS, float(floor_sum) / RUNS_PER_CLASS])
@@ -57,6 +58,11 @@ func _bot_step() -> void:
 	if GameState.turn_count > turn_before or game._ended:
 		return
 	var goal: Vector2i = _pick_goal(p)
+	if goal == p.grid_pos and DungeonState.is_stairs(goal):
+		var floor_before: int = GameState.current_floor
+		game._on_descend_pressed()
+		if GameState.current_floor != floor_before:
+			return
 	var step: Vector2i = _first_step(p.grid_pos, goal)
 	if step == Vector2i.ZERO:
 		game._on_wait_pressed()
@@ -82,6 +88,11 @@ func _use_consumables(p) -> bool:
 	if herb and p.has_status("poison"):
 		game._on_item_chosen(herb)
 		return true
+	if GameState.hunger >= Player.HUNGRY:
+		var food: ItemData = _smallest_food()
+		if food:
+			game._on_item_chosen(food)
+			return true
 	var elixir: ItemData = _has("elixir")
 	if elixir:
 		game._on_item_chosen(elixir)
@@ -112,6 +123,15 @@ func _use_consumables(p) -> bool:
 			game._on_item_chosen(talisman)
 			return true
 	return false
+
+## The least filling food in the bag, so little is wasted.
+func _smallest_food() -> ItemData:
+	var best: ItemData = null
+	for e in GameState.inventory:
+		var d: ItemData = e.item_data
+		if d.item_type == ItemData.ItemType.FOOD and (best == null or d.value_a < best.value_a):
+			best = d
+	return best
 
 ## How much the bot values a piece of gear; -1 for an empty slot.
 func _gear_score(d: ItemData) -> int:

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "jumeokbap"
+item_type = 10
+identified_name = "주먹밥"
+unidentified_name = "주먹밥"
+description = "소금 간을 해 뭉친 밥덩이. 길 떠날 때 챙기는 끼니."
+identified_description = "소금 간을 해 뭉친 밥덩이. 길 떠날 때 챙기는 끼니. 먹으면 배고픔이 200턴만큼 가신다."
+stackable = true
+is_cursed = false
+min_floor = 1
+value_a = 200
+value_b = 0
+gold_value = 15

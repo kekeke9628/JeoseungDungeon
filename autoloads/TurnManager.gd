@@ -4,7 +4,7 @@ extends Node
 
 signal turn_ended
 
-## The player regains 1 HP every this many turns.
+## The player regains 1 HP every this many turns, unless starving.
 const REGEN_INTERVAL: int = 5
 
 var monsters: Array = []  # Array[Monster]
@@ -28,11 +28,15 @@ func end_player_turn() -> void:
 	GameState.turn_count += 1
 	if player != null and player.is_alive:
 		player.tick_statuses()
+	if player != null and player.is_alive:
+		player.tick_hunger()
 	if GameState.skill_cooldown_left > 0:
 		GameState.skill_cooldown_left -= 1
 		GameState.skill_changed.emit()
-	if player != null and player.is_alive and GameState.turn_count % REGEN_INTERVAL == 0 and player.current_hp < player.stats.max_hp:
-		player.heal(1)
+	var can_regen: bool = player != null and player.is_alive and not player.is_starving()
+	if can_regen and GameState.turn_count % REGEN_INTERVAL == 0:
+		if player.current_hp < player.stats.max_hp:
+			player.heal(1)
 	# Snapshot so a monster dying mid-loop (removed via unregister_monster)
 	# doesn't shift indices out from under the iteration.
 	var snapshot: Array = monsters.duplicate()

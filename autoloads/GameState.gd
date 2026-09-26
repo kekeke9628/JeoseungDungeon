@@ -20,6 +20,8 @@ var player_xp: int = 0
 var player_xp_to_next: int = 20
 var turn_count: int = 0
 var skill_cooldown_left: int = 0
+## Turns since the player last ate their fill (see Player.HUNGRY). 0 is full.
+var hunger: int = 0
 ## What last hurt the player, shown on the game-over screen.
 var last_attacker: String = ""
 
@@ -54,6 +56,7 @@ func reset_run() -> void:
 	player_xp_to_next = 20
 	turn_count = 0
 	skill_cooldown_left = 0
+	hunger = 0
 	last_attacker = ""
 	equipped.clear()
 	inventory.clear()

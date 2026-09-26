@@ -7,10 +7,14 @@ signal direction_pressed(dir: Vector2i)
 signal wait_pressed
 signal skill_pressed
 signal attack_pressed
+signal descend_pressed
 
 const BTN_SIZE: float = 90.0
+## Gold like the stairs tile, so the button reads as "take these stairs".
+const DESCEND_TINT := Color(1.0, 0.85, 0.4)
 
 var _skill_button: Button
+var _descend_button: Button
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -27,6 +31,19 @@ func _init() -> void:
 	_skill_button = _add_button("기술", Vector2(440, 1090), func(): skill_pressed.emit())
 	_skill_button.size = Vector2(240, 90)
 	_skill_button.add_theme_font_size_override("font_size", 26)
+	# Shown only while the player stands on the stairs: going down is a choice,
+	# not something that happens on the way past.
+	_descend_button = _add_button("내려가기", Vector2(440, 1188), func(): descend_pressed.emit())
+	_descend_button.size = Vector2(240, 84)
+	_descend_button.add_theme_font_size_override("font_size", 28)
+	_descend_button.modulate = DESCEND_TINT
+	_descend_button.visible = false
+
+func set_descend_visible(on: bool) -> void:
+	_descend_button.visible = on
+
+func is_descend_visible() -> bool:
+	return _descend_button.visible
 
 func set_skill(skill_name: String, cooldown_left: int) -> void:
 	if cooldown_left > 0:

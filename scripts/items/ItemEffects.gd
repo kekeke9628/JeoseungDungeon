@@ -17,6 +17,9 @@ static func use_item(item: ItemData, player: Player) -> bool:
 		ItemData.ItemType.SCROLL:
 			used = _read(item, player)
 			sfx = "scroll"
+		ItemData.ItemType.FOOD:
+			used = _eat(item, player)
+			sfx = "eat"
 	if used:
 		AudioManager.play(sfx)
 	return used
@@ -32,6 +35,18 @@ static func _drink(item: ItemData, player: Player) -> bool:
 		MessageBus.log_message("독기가 가셨다.")
 	player.heal(item.value_a)
 	MessageBus.log_message("%s 마셨다. 체력이 %d 회복됐다." % [Josa.eul_reul(item.identified_name), item.value_a])
+	return true
+
+## Food takes away value_a turns of hunger. Nothing is eaten on a full stomach.
+static func _eat(item: ItemData, player: Player) -> bool:
+	if GameState.hunger <= 0:
+		MessageBus.log_message("배가 불러서 더 먹을 수 없다.")
+		return false
+	GameState.remove_item(item)
+	GameState.hunger = maxi(0, GameState.hunger - item.value_a)
+	var after: String = "배가 든든하다." if GameState.hunger < Player.HUNGRY else "아직 배가 고프다."
+	MessageBus.log_message("%s 먹었다. %s" % [Josa.eul_reul(item.identified_name), after])
+	player.status_changed.emit()
 	return true
 
 static func _read(item: ItemData, player: Player) -> bool:

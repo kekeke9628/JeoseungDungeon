@@ -99,6 +99,9 @@ ITEM_ICONS = {
     "jipsin": (T.SHOES, (205, 175, 115), (150, 110, 65)),
     "mokhwa": (T.SHOES, (55, 50, 65), (200, 200, 210)),
     "unhye": (T.SHOES, (130, 90, 190), (240, 200, 80)),
+    "gotgam": (T.PERSIMMON, (215, 115, 45), (95, 120, 55)),
+    "jumeokbap": (T.RICEBALL, (240, 238, 228), (40, 62, 48)),
+    "sajatbap": (T.RICEBOWL, (200, 160, 70), (246, 244, 236)),
 }
 
 

@@ -8,6 +8,14 @@ signal status_changed
 const POISON_TURNS: int = 4
 const STUN_TURNS: int = 1
 const WELL_HEAL_FRACTION: float = 0.5
+## Hunger, after Shattered Pixel Dungeon's: GameState.hunger rises by one each
+## turn and food brings it back down. Past HUNGRY the player is only warned;
+## past STARVING natural healing stops and HP drains until they eat. It is what
+## keeps resting to full health after every fight from being free.
+const HUNGRY: int = 300
+const STARVING: int = 450
+## While starving, 1 HP is lost every this many turns.
+const STARVE_INTERVAL: int = 2
 
 func _ready() -> void:
 	TurnManager.register_player(self)
@@ -115,9 +123,30 @@ func tick_statuses() -> void:
 	sprite.modulate = _rest_tint()
 	status_changed.emit()
 
+## Called once per player turn, after tick_statuses().
+func tick_hunger() -> void:
+	var before: int = GameState.hunger
+	GameState.hunger = mini(before + 1, STARVING)
+	if before < HUNGRY and GameState.hunger >= HUNGRY:
+		MessageBus.log_message("배가 고프다. 무언가 먹어야겠다.")
+		status_changed.emit()
+	elif before < STARVING and GameState.hunger >= STARVING:
+		MessageBus.log_message("굶주려서 기운이 빠진다! 먹지 않으면 체력이 계속 줄어든다.")
+		status_changed.emit()
+	if is_starving() and GameState.turn_count % STARVE_INTERVAL == 0:
+		GameState.last_attacker = "굶주림"
+		take_damage(1)
+
+func is_starving() -> bool:
+	return GameState.hunger >= STARVING
+
 func status_text() -> String:
 	var names := {"poison": "독", "stun": "기절"}
 	var parts: Array[String] = []
+	if is_starving():
+		parts.append("굶주림")
+	elif GameState.hunger >= HUNGRY:
+		parts.append("배고픔")
 	for key in statuses.keys():
 		parts.append("%s %d" % [names.get(key, key), statuses[key]])
 	return " ".join(parts)

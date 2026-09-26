@@ -91,6 +91,20 @@ def build_sfx():
     save("click", sine(900, 0.03) * env(int(SR * 0.03), decay=60))
     save("victory", notes([523, 659, 784, 1047, 784, 1047, 1319], 0.14, vol=0.7))
     save("defeat", notes([392, 349, 311, 262], 0.25, vol=0.7))
+    save("eat", eat_sfx())
+
+
+def eat_sfx():
+    """Three soft chews. Own RNG, so adding it left the other sounds unchanged."""
+    rng = np.random.default_rng(11)
+    bite = int(SR * 0.09)
+    gap = np.zeros(int(SR * 0.05))
+    parts = []
+    for pitch in (190, 170, 200):
+        crunch = lowpass(rng.uniform(-1, 1, bite), 12) * env(bite, attack=0.004, decay=35)
+        thump = sine(pitch, 0.09, 0.6) * env(bite, decay=40)
+        parts += [crunch + thump, gap]
+    return np.concatenate(parts)
 
 
 def loop_fix(a, length, xf=SR):

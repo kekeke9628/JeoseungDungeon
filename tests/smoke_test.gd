@@ -88,10 +88,12 @@ func _run() -> void:
 	await _test_paper_doll()
 	await _test_attack_and_motion()
 	await _test_teleport_pickup()
+	await _test_stairs_on_request()
+	await _test_hunger()
 
 func _test_content() -> void:
 	print("[content]")
-	check(ItemDatabase.items.size() == 29, "29 items loaded (got %d)" % ItemDatabase.items.size())
+	check(ItemDatabase.items.size() == 32, "32 items loaded (got %d)" % ItemDatabase.items.size())
 	for slot in GameState.EQUIP_SLOTS:
 		var any_for_slot: bool = ItemDatabase.items.values().any(func(it): return it.equip_slot() == slot)
 		check(any_for_slot, "some item fits the %s slot" % slot)
@@ -385,6 +387,7 @@ func _test_progression() -> void:
 			check(not game._ended, "killing the floor-10 boss does not end the game")
 		DungeonState.move_actor(game.player, game.player.grid_pos, DungeonState.stairs_pos)
 		game._after_player_action()
+		game._on_descend_pressed()
 		if GameState.current_floor != f + 1:
 			check(false, "stairs %d -> %d (stuck at %d)" % [f, f + 1, GameState.current_floor])
 	check(GameState.current_floor == 20, "reached final floor")
@@ -913,14 +916,14 @@ func _test_four_way_and_boss_stairs() -> void:
 	game._after_player_action()
 	told = lines.filter(func(l): return l.contains("길을 막고 있다"))
 	check(told.size() == 1, "the warning is not repeated while standing on the stairs")
+	game._on_descend_pressed()
+	told = lines.filter(func(l): return l.contains("길을 막고 있다"))
+	var refused: bool = GameState.current_floor == 10 and told.size() == 2
+	check(refused, "pressing descend past a living boss is refused")
 	boss.take_damage(99999)
 	game._after_player_action()
 	check(GameState.current_floor == 10, "killing the boss from the stairs leaves time for its drop")
-	var off: Vector2i = _adjacent_free_tile(stairs)
-	DungeonState.move_actor(p, stairs, off)
-	game._after_player_action()
-	DungeonState.move_actor(p, off, stairs)
-	game._after_player_action()
+	game._on_descend_pressed()
 	check(GameState.current_floor == 11, "with the boss gone the stairs lead down")
 	MessageBus.message_logged.disconnect(log_line)
 
@@ -1127,3 +1130,114 @@ func _test_teleport_pickup() -> void:
 	check(p.grid_pos == Vector2i(5, 5), "the teleport lands on the only free tile")
 	var left_on_floor: bool = DungeonState.items_at.has(p.grid_pos)
 	check(after == before + 1 and not left_on_floor, "what lies there is picked up")
+
+func _test_stairs_on_request() -> void:
+	print("[stairs on request]")
+	var lines: Array[String] = []
+	var log_line := func(text): lines.append(text)
+	MessageBus.message_logged.connect(log_line)
+	await _new_game("mudang")
+	_clear_monsters()
+	var p: Player = game.player
+	# a corridor with the stairs in the middle: (0,0) .. (2,0)=stairs .. (4,0)
+	DungeonState.clear()
+	for x in range(5):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	DungeonState.grid[Vector2i(2, 0)] = DungeonState.Tile.STAIRS_DOWN
+	game._place_player(Vector2i(0, 0))
+	game._on_direction_pressed(Vector2i(1, 0))
+	game._on_direction_pressed(Vector2i(1, 0))
+	var stayed: bool = GameState.current_floor == 1
+	check(p.grid_pos == Vector2i(2, 0) and stayed, "stepping on the stairs does not go down")
+	check(game.dpad.is_descend_visible(), "standing on the stairs shows the descend button")
+	check(lines.any(func(l): return l.contains("[내려가기]")), "the player is told how to go down")
+	game._on_direction_pressed(Vector2i(1, 0))
+	check(not game.dpad.is_descend_visible(), "stepping off hides the descend button")
+	game._on_descend_pressed()
+	check(GameState.current_floor == 1, "descend does nothing off the stairs")
+	game._on_direction_pressed(Vector2i(1, 0))
+	await game._on_map_tapped(Vector2i(0, 0))
+	stayed = GameState.current_floor == 1
+	check(p.grid_pos == Vector2i(0, 0) and stayed, "a tapped walk passes over the stairs")
+	await game._on_map_tapped(Vector2i(2, 0))
+	var turns: int = GameState.turn_count
+	var enter := InputEventKey.new()
+	enter.keycode = KEY_ENTER
+	enter.pressed = true
+	game._unhandled_input(enter)
+	check(GameState.current_floor == 2, "Enter on the stairs goes down")
+	check(GameState.turn_count == turns, "going down costs no turn")
+	check(not game.dpad.is_descend_visible(), "the new floor starts with the button hidden")
+	MessageBus.message_logged.disconnect(log_line)
+
+func _count_in_bag(id: String) -> int:
+	for e in GameState.inventory:
+		if e.item_data.id == id:
+			return e.quantity
+	return 0
+
+func _test_hunger() -> void:
+	print("[hunger]")
+	var lines: Array[String] = []
+	var log_line := func(text): lines.append(text)
+	MessageBus.message_logged.connect(log_line)
+	await _new_game("mudang")
+	_clear_monsters()
+	var p: Player = game.player
+	var rice: ItemData = ItemDatabase.get_item("jumeokbap")
+	var packed: bool = _count_in_bag("jumeokbap") == 1
+	check(GameState.hunger == 0 and packed, "a run starts full, with a rice ball")
+	check(rice.get_display_name(false) == "주먹밥", "food needs no identifying")
+	var refused: bool = not ItemEffects.use_item(rice, p)
+	check(refused and _count_in_bag("jumeokbap") == 1, "nothing is eaten when full")
+	var turns: int = GameState.turn_count
+	p.wait_turn()
+	check(GameState.hunger == 1 and GameState.turn_count == turns + 1, "hunger grows by one each turn")
+	GameState.hunger = Player.HUNGRY - 1
+	p.wait_turn()
+	check(lines.any(func(l): return l.contains("배가 고프다")), "the player is warned when hungry")
+	check(game.hud._label.text.contains("배고픔"), "the HUD shows hunger")
+	GameState.hunger = Player.STARVING - 1
+	p.current_hp = p.stats.max_hp - 20
+	var hp: int = p.current_hp
+	for i in range(10):
+		p.wait_turn()
+	check(GameState.hunger == Player.STARVING, "hunger stops rising once starving")
+	check(game.hud._label.text.contains("굶주림"), "the HUD shows starvation")
+	check(p.current_hp == hp - 10 / Player.STARVE_INTERVAL, "starving drains HP and stops healing")
+	turns = GameState.turn_count
+	game._on_item_chosen(rice)
+	var fed: int = Player.STARVING - rice.value_a + 1
+	var took_turn: bool = GameState.turn_count == turns + 1
+	check(took_turn and GameState.hunger == fed, "eating takes a turn and eases hunger")
+	check(_count_in_bag("jumeokbap") == 0, "the food is used up")
+	check(not game.hud._label.text.contains("배고픔"), "a meal clears the hunger mark")
+	var eaten: bool = lines.any(func(l): return l.contains("주먹밥을 먹었다"))
+	check(eaten, "eating is logged")
+	GameState.hunger = 123
+	SaveManager.save_run(p)
+	await _new_game("mudang", true)
+	check(GameState.hunger == 123, "hunger survives save and continue")
+	var one_each: bool = true
+	for f in range(1, 6):
+		game._load_floor(f)
+		var meals: int = 0
+		for item in DungeonState.items_at.values():
+			if item.item_type == ItemData.ItemType.FOOD:
+				meals += 1
+		one_each = one_each and meals == 1
+	check(one_each, "every floor lays out exactly one meal")
+	IAPManager.reset_for_tests()
+	IAPManager.purchase("revive_token")
+	await _new_game("dosa")
+	_clear_monsters()
+	GameState.hunger = Player.STARVING
+	game.player.current_hp = 1
+	game.player.wait_turn()
+	game.player.wait_turn()
+	check(not game.player.is_alive and GameState.last_attacker == "굶주림", "starvation can kill")
+	game._on_revive()
+	check(game.player.is_alive and GameState.hunger == 0, "a revive also clears hunger")
+	check(not game.hud._label.text.contains("굶주림"), "the HUD drops the starving mark on revive")
+	IAPManager.reset_for_tests()
+	MessageBus.message_logged.disconnect(log_line)
