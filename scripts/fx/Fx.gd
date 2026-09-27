@@ -31,6 +31,12 @@ const GEAR_SPOTS := {
 	"amulet": Vector2(14.5, 17.5), "ring": Vector2(7, 18), "boots": Vector2(12, 21.5),
 }
 
+## Colour of each timed effect, for its burst when it starts.
+const BUFF_COLORS := {
+	"regen": Color(1.0, 0.45, 0.55), "haste": Color(0.5, 0.9, 1.0), "sight": Color(0.75, 0.5, 1.0),
+	"invisible": Color(0.8, 0.8, 0.9), "levitate": Color(0.9, 0.95, 1.0),
+}
+
 ## Off in headless test runs, where frames only pass when a test waits and a
 ## slowed clock would only slow the tests.
 static var hit_stop_enabled: bool = true
@@ -177,6 +183,17 @@ static func equip(actor, slot: String) -> void:
 	shape(actor.get_parent(), at, FxShape.Kind.RING, GOLD, 0.35, 18.0, 2.0)
 	var b := burst(actor.get_parent(), at, GOLD, 10, 60.0, -40.0, 0.5, 1)
 	b.scatter = 4.0
+
+## A ring and rising motes in the effect's colour when a timed effect starts.
+static func buff(actor, status: String) -> void:
+	if not _shown(actor):
+		return
+	var c: Color = BUFF_COLORS.get(status, GOLD)
+	var at: Vector2 = _center(actor)
+	shape(actor.get_parent(), at, FxShape.Kind.RING, c, 0.5, 44.0, 3.0)
+	var b := burst(actor.get_parent(), at + Vector2(0, 12), c, 16, 50.0, -130.0, 0.9, 1)
+	b.spread = PI * 0.5
+	b.scatter = 14.0
 
 ## Salpuri: rings in the shaman's colours and petals thrown up.
 static func salpuri(actor) -> void:

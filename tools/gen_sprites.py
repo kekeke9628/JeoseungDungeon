@@ -73,6 +73,11 @@ ITEM_ICONS = {
     "gotgam": (T.PERSIMMON, (215, 115, 45), (95, 120, 55)),
     "jumeokbap": (T.RICEBALL, (240, 238, 228), (40, 62, 48)),
     "sajatbap": (T.RICEBOWL, (200, 160, 70), (246, 244, 236)),
+    "hoechuntang": (T.POTION, (226, 80, 120), (140, 100, 60)),
+    "jilpungju": (T.POTION, (110, 220, 240), (240, 240, 250)),
+    "simantang": (T.POTION, (160, 100, 220), (140, 100, 60)),
+    "eunsin_talisman": (T.SCROLL, (190, 190, 206), (70, 70, 90)),
+    "buyu_talisman": (T.SCROLL, (226, 240, 255), (110, 150, 220)),
 }
 
 

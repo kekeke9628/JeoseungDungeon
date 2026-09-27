@@ -135,6 +135,9 @@ func encode_floor(player: Player) -> Dictionary:
 	var spotted: Array = []
 	for pos in DungeonState.spotted_traps.keys():
 		spotted.append([pos.x, pos.y])
+	var hazards: Array = []
+	for pos in DungeonState.hazards.keys():
+		hazards.append([pos.x, pos.y, DungeonState.hazards[pos]])
 	var monsters: Array = []
 	for m in TurnManager.monsters:
 		if is_instance_valid(m) and m.is_alive:
@@ -145,6 +148,7 @@ func encode_floor(player: Player) -> Dictionary:
 		"stairs": [DungeonState.stairs_pos.x, DungeonState.stairs_pos.y],
 		"player": [player.grid_pos.x, player.grid_pos.y],
 		"items": items, "gold": gold, "spotted": spotted, "monsters": monsters,
+		"hazards": hazards,
 	}
 
 ## Parses encode_floor output without touching any state. Returns {} if the
@@ -193,6 +197,13 @@ func decode_floor(state) -> Dictionary:
 		var pos: Vector2i = _vec(e)
 		if grid.get(pos, DungeonState.Tile.WALL) == DungeonState.Tile.TRAP:
 			spotted[pos] = true
+	var hazards: Dictionary = {}
+	for e in _list(state.get("hazards"), TYPE_ARRAY):
+		var pos: Vector2i = _vec(e)
+		var kind: String = str(e[2]) if e.size() > 2 else ""
+		var on_ground: bool = grid.get(pos, DungeonState.Tile.WALL) != DungeonState.Tile.WALL
+		if HazardSystem.NAMES.has(kind) and on_ground:
+			hazards[pos] = kind
 	var monsters: Array = []
 	var taken: Dictionary = {player_pos: true}
 	for m in _list(state.get("monsters"), TYPE_DICTIONARY):
@@ -205,6 +216,7 @@ func decode_floor(state) -> Dictionary:
 	return {
 		"width": w, "height": h, "grid": grid, "explored": explored, "stairs": stairs,
 		"player": player_pos, "items": items, "gold": gold, "spotted": spotted, "monsters": monsters,
+		"hazards": hazards,
 	}
 
 static func _vec(v) -> Vector2i:

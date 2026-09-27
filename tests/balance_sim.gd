@@ -98,6 +98,16 @@ func _use_consumables(p) -> bool:
 	if elixir:
 		game._on_item_chosen(elixir)
 		return true
+	var near_foe: int = _nearest_monster_dist(p)
+	if hp_ratio < 0.6 and not p.has_status("regen") and _has("hoechuntang"):
+		game._on_item_chosen(_has("hoechuntang"))
+		return true
+	if hp_ratio < 0.5 and near_foe <= 3 and not p.has_status("haste") and _has("jilpungju"):
+		game._on_item_chosen(_has("jilpungju"))
+		return true
+	if hp_ratio < 0.25 and near_foe <= 3 and not p.has_status("invisible") and _has("eunsin_talisman"):
+		game._on_item_chosen(_has("eunsin_talisman"))
+		return true
 	if hp_ratio < 0.4:
 		for id in ["immortal_wine", "flower_wine"]:
 			var potion: ItemData = _has(id)
@@ -187,7 +197,8 @@ func _search(from: Vector2i, to: Vector2i, avoid_traps: bool) -> Array[Vector2i]
 			var n: Vector2i = cur + d
 			if prev.has(n) or not DungeonState.is_walkable(n):
 				continue
-			if n != to and (DungeonState.get_actor_at(n) != null or (avoid_traps and DungeonState.tile_at(n) == DungeonState.Tile.TRAP)):
+			var danger: bool = DungeonState.tile_at(n) == DungeonState.Tile.TRAP or DungeonState.hazards.has(n)
+			if n != to and (DungeonState.get_actor_at(n) != null or (avoid_traps and danger)):
 				continue
 			prev[n] = cur
 			queue.append(n)

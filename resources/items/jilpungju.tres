@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "jilpungju"
+item_type = 2
+identified_name = "질풍주"
+unidentified_name = "톡 쏘는 술"
+description = "마개를 열자 바람 소리가 나는 술."
+identified_description = "질풍주. 마시면 20턴 동안 몸이 빨라져, 적이 한 번 움직일 때 두 번 움직인다."
+stackable = true
+is_cursed = false
+min_floor = 2
+value_a = 20
+value_b = 0
+gold_value = 35
+loot_weight = 5

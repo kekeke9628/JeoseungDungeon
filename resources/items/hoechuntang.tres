@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "hoechuntang"
+item_type = 2
+identified_name = "회춘탕"
+unidentified_name = "붉은 탕약"
+description = "달큰한 약초 냄새가 나는 붉은 탕약."
+identified_description = "회춘탕. 마시면 60턴 동안 매 턴 체력이 1씩 차오른다."
+stackable = true
+is_cursed = false
+min_floor = 1
+value_a = 60
+value_b = 0
+gold_value = 30
+loot_weight = 5

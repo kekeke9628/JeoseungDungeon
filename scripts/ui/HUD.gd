@@ -1,8 +1,9 @@
 class_name HUD
 extends Control
 ## Top status bar: floor, a health bar, level and experience bar, coins, a
-## hunger meter, timed conditions (poison, stun), and the settings and bag
-## buttons.
+## hunger meter, and the settings and bag buttons. Timed conditions and
+## effects (poison, haste...) show as a row of icons with turns left just
+## under the bar, like Shattered Pixel Dungeon's buff icons.
 ## Built in code; fixed layout for the 720x1280 portrait viewport.
 
 signal inventory_pressed
@@ -11,11 +12,10 @@ signal settings_pressed
 const HEIGHT: float = 100.0
 const HP_COLOR := Color(0.82, 0.2, 0.22)
 const XP_COLOR := Color(0.92, 0.72, 0.28)
-## Status marks, most urgent first: the label takes the colour of the worst.
-const STATUS_COLORS: Array = [
-	["독", Color(0.5, 0.95, 0.45)],
-	["기절", Color(1.0, 0.9, 0.4)],
-]
+## Status icon row under the bar.
+const STATUS_ROW := Vector2(14, 106)
+const STATUS_ICON := 32.0
+const STATUS_GAP := 42.0
 ## Hunger meter colour per stage (Player.hunger_stage).
 const HUNGER_COLORS := {
 	"든든함": Color(0.45, 0.8, 0.35),
@@ -57,6 +57,7 @@ var _hp_bar: Bar
 var _xp_bar: Bar
 var _hunger_bar: Bar
 var _hunger_text: Label
+var _status_row: Control
 
 var _floor: int = 1
 var _hp: int = 0
@@ -111,6 +112,11 @@ func _init() -> void:
 	_hunger_text.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	_hunger_text.add_theme_constant_override("outline_size", 5)
 	_status_label = _label(Vector2(430, 8), Vector2(130, 36), 22, UITheme.TEXT)
+	_status_label.visible = false  # the icons say it; the text stays for summary()
+	_status_row = Control.new()
+	_status_row.position = STATUS_ROW
+	_status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_status_row)
 
 	_icon_button("settings", Vector2(566, 12), func(): settings_pressed.emit())
 	_icon_button("bag", Vector2(642, 12), func(): inventory_pressed.emit())
@@ -169,6 +175,38 @@ func set_status(text: String) -> void:
 	_status = text
 	_refresh()
 
+## One icon per active condition or effect (name -> turns left), harmful
+## first, each with the turns left in its corner.
+func set_statuses(statuses: Dictionary) -> void:
+	for c in _status_row.get_children():
+		c.queue_free()
+	var parts: Array[String] = []
+	var i: int = 0
+	for key in Player.STATUS_NAMES:
+		if not statuses.has(key):
+			continue
+		parts.append("%s %d" % [Player.STATUS_NAMES[key], statuses[key]])
+		var icon := TextureRect.new()
+		var path: String = UITheme.UI_DIR + "status_" + key + ".png"
+		icon.texture = load(path) if ResourceLoader.exists(path) else null
+		icon.position = Vector2(i * STATUS_GAP, 0)
+		icon.size = Vector2(STATUS_ICON, STATUS_ICON)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_status_row.add_child(icon)
+		var turns := Label.new()
+		turns.text = str(statuses[key])
+		turns.position = Vector2(i * STATUS_GAP + 12, 16)
+		turns.size = Vector2(30, 22)
+		turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		turns.add_theme_font_size_override("font_size", 15)
+		turns.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+		turns.add_theme_constant_override("outline_size", 5)
+		turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_status_row.add_child(turns)
+		i += 1
+	set_status(" ".join(parts))
+
 ## Hunger in turns (GameState.hunger): shown as fullness with its stage name.
 func set_hunger(hunger: int) -> void:
 	_hunger = hunger
@@ -199,9 +237,3 @@ func _refresh() -> void:
 	_xp_bar.queue_redraw()
 	_hunger_bar.queue_redraw()
 	_status_label.text = _status
-	var color: Color = UITheme.TEXT
-	for entry in STATUS_COLORS:
-		if _status.contains(entry[0]):
-			color = entry[1]
-			break
-	_status_label.add_theme_color_override("font_color", color)

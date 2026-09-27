@@ -15,6 +15,10 @@ const REMEMBERED := Color(0.25, 0.26, 0.37)
 const UNSEEN := Color(0, 0, 0)
 const WARM := Color(1.0, 0.8, 0.52)
 const STAIRS_GLOW := Color(0.62, 0.72, 1.0)
+## Hazard zones glow in their own colour (HazardSystem kinds).
+const HAZARD_GLOW := {
+	"fire": Color(1.0, 0.62, 0.35), "poison": Color(0.62, 0.95, 0.5), "ice": Color(0.72, 0.86, 1.0),
+}
 const LIGHT_RADIUS: float = 2.6
 ## How much the whole light breathes, like a flame (fraction of brightness).
 const FLICKER: float = 0.035
@@ -86,6 +90,9 @@ func _light_sources() -> Array:
 			_:
 				if TileAtlas.LIGHTS.has(DungeonRenderer.decor_at(pos)):
 					out.append([pos, WARM])
+		var hazard: String = DungeonState.hazards.get(pos, "")
+		if hazard != "":
+			out.append([pos, HAZARD_GLOW[hazard]])
 	return out
 
 func _draw() -> void:

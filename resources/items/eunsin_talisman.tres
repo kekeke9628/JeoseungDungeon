@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "eunsin_talisman"
+item_type = 3
+identified_name = "은신 부적"
+unidentified_name = "흐릿한 부적"
+description = "글자가 자꾸 흐려지는 부적."
+identified_description = "은신 부적. 읽으면 20턴 동안 모습이 사라져, 바로 곁이 아니면 적이 알아채지 못한다. 공격하면 드러난다."
+stackable = true
+is_cursed = false
+min_floor = 3
+value_a = 20
+value_b = 0
+gold_value = 35
+loot_weight = 5

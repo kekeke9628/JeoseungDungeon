@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "simantang"
+item_type = 2
+identified_name = "심안탕"
+unidentified_name = "보랏빛 탕약"
+description = "들여다보면 눈이 시린 보랏빛 탕약."
+identified_description = "심안탕. 마시면 30턴 동안 이 층 전체와 모든 적이 보인다."
+stackable = true
+is_cursed = false
+min_floor = 2
+value_a = 30
+value_b = 0
+gold_value = 30
+loot_weight = 5

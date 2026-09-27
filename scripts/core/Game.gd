@@ -190,6 +190,7 @@ func _load_floor(floor_num: int) -> void:
 	_spawn_monsters(floor_num, rooms, result.stairs_pos)
 	_spawn_loot(floor_num, rooms, result.start_pos)
 	_spawn_food(rooms, result.start_pos)
+	HazardSystem.generate(floor_num, rooms, result.start_pos, result.stairs_pos)
 
 	if floor_num > 1:
 		AudioManager.play("stairs")
@@ -208,6 +209,7 @@ func _restore_floor(floor_num: int, state) -> bool:
 	DungeonState.stairs_pos = snap.stairs
 	DungeonState.explored = snap.explored
 	DungeonState.spotted_traps = snap.spotted
+	DungeonState.hazards = snap.hazards
 	DungeonState.items_at = snap.items
 	DungeonState.gold_at = snap.gold
 	_build_floor_node()
@@ -243,6 +245,7 @@ func _enter_floor(floor_num: int, arrival_text: String) -> void:
 	MessageBus.log_message(arrival_text)
 	AudioManager.play_music("boss" if MonsterDatabase.get_boss_for_floor(floor_num) != null else "ambient")
 	_seen_monsters.clear()
+	HazardSystem.reset()
 	_was_on_stairs = false
 	_update_stairs(false)
 	_refresh_vision()
@@ -307,8 +310,19 @@ func _spawn_loot(floor_num: int, rooms: Array[Rect2i], start_pos: Vector2i) -> v
 			DungeonState.place_gold(pos, randi_range(5, 25) + floor_num * 3)
 		else:
 			var use_gear: bool = other.is_empty() or (not gear.is_empty() and randf() < LOOT_GEAR_SHARE)
-			var pool: Array[ItemData] = gear if use_gear else other
-			DungeonState.place_item(pos, pool[randi() % pool.size()])
+			DungeonState.place_item(pos, _pick_weighted(gear if use_gear else other))
+
+## One item from pool, each as likely as its loot_weight.
+func _pick_weighted(pool: Array[ItemData]) -> ItemData:
+	var total: int = 0
+	for item in pool:
+		total += maxi(1, item.loot_weight)
+	var roll: int = randi() % total
+	for item in pool:
+		roll -= maxi(1, item.loot_weight)
+		if roll < 0:
+			return item
+	return pool[0]
 
 ## Places this floor's one meal on a free floor tile away from the start.
 func _spawn_food(rooms: Array[Rect2i], start_pos: Vector2i) -> void:
@@ -346,7 +360,10 @@ func _fade_in() -> void:
 	_fade_tween.tween_property(_fade, "modulate:a", 0.0, FADE_TIME)
 
 func _refresh_vision() -> void:
-	DungeonState.compute_fov(player.grid_pos, Constants.VISION_RADIUS)
+	if player.has_status("sight"):
+		DungeonState.see_all(player.grid_pos)
+	else:
+		DungeonState.compute_fov(player.grid_pos, Constants.VISION_RADIUS)
 	for _trap_pos in TrapSystem.spot_near(player.grid_pos):
 		MessageBus.log_message("바닥의 이음새가 눈에 들어온다. 함정이다!")
 	for m in TurnManager.monsters:
@@ -441,11 +458,15 @@ func _walk(path: Array[Vector2i], token: int) -> void:
 			return
 		await get_tree().create_timer(WALK_STEP_DELAY).timeout
 
-## True if a trap the player has spotted sits on the rest of the route. The
-## final tile is excluded so tapping a known trap on purpose still works.
+## True if a trap the player has spotted, or a hazard zone, sits on the rest
+## of the route. The final tile is excluded so tapping one on purpose still
+## works; a floating player is not stopped by hazards.
 func _route_hits_spotted_trap(path: Array[Vector2i], from_index: int) -> bool:
+	var floating: bool = player.has_status("levitate")
 	for i in range(from_index, path.size() - 1):
 		if DungeonState.spotted_traps.has(path[i]):
+			return true
+		if not floating and DungeonState.hazards.has(path[i]):
 			return true
 	return false
 
@@ -508,6 +529,8 @@ func _on_skill_pressed() -> void:
 		MessageBus.log_message("아직 기술을 쓸 수 없다. (%d턴)" % GameState.skill_cooldown_left)
 		return
 	var c: CharacterClassData = GameState.player_class
+	if c.skill_id != "salpuri":
+		player.reveal()
 	if SkillEffects.use(c.skill_id, player):
 		AudioManager.play("skill")
 		GameState.skill_cooldown_left = c.skill_cooldown + 1
@@ -580,7 +603,7 @@ func _floor_boss() -> Monster:
 ## Timed conditions and the hunger meter; hunger moves every turn.
 func _refresh_status_hud() -> void:
 	if is_instance_valid(player):
-		hud.set_status(player.status_text())
+		hud.set_statuses(player.statuses)
 	hud.set_hunger(GameState.hunger)
 
 func _update_skill_button() -> void:
