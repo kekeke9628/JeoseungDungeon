@@ -90,6 +90,7 @@ func _run() -> void:
 	await _test_teleport_pickup()
 	await _test_stairs_on_request()
 	await _test_hunger()
+	await _test_graphics()
 
 func _test_content() -> void:
 	print("[content]")
@@ -1248,3 +1249,44 @@ func _test_hunger() -> void:
 	check(not game.hud._label.text.contains("굶주림"), "the HUD drops the starving mark on revive")
 	IAPManager.reset_for_tests()
 	MessageBus.message_logged.disconnect(log_line)
+
+func _test_graphics() -> void:
+	print("[graphics]")
+	var ids: Array = MonsterDatabase.monsters.keys() + ["mudang", "hwarang", "dosa"]
+	var art_ok: bool = true
+	for id in ids:
+		var frames: Array[Texture2D] = SpriteLibrary.get_actor_frames(id)
+		var sized: bool = frames.all(func(t): return t.get_size() == Vector2(24, 24))
+		art_ok = art_ok and frames.size() == 2 and sized
+	check(art_ok, "every character has two 24px idle frames")
+	await _new_game("hwarang")
+	_clear_monsters()
+	var p: Player = game.player
+	DungeonState.clear()
+	for x in range(4):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(2, 0))
+	game._on_direction_pressed(Vector2i(-1, 0))
+	check(p.sprite.flip_h, "walking left turns the sprite left")
+	game._on_direction_pressed(Vector2i(1, 0))
+	check(not p.sprite.flip_h, "walking right turns it back")
+	check(p.shadow.visible, "characters with art cast a ground shadow")
+	game._load_floor(3)
+	var looks: Array = []
+	for pos in DungeonState.grid.keys():
+		looks.append([DungeonRenderer.cell_hash(pos, 0), DungeonRenderer.decor_at(pos)])
+	var again: Array = []
+	for pos in DungeonState.grid.keys():
+		again.append([DungeonRenderer.cell_hash(pos, 0), DungeonRenderer.decor_at(pos)])
+	check(looks == again, "floor variants and decor are the same on every redraw")
+	var light = game.floor_node.light
+	light.refresh()
+	var img: Image = light.light_map
+	var here: Color = img.get_pixelv(p.grid_pos)
+	var dark := Vector2i(-1, -1)
+	for pos in DungeonState.grid.keys():
+		if not DungeonState.explored.has(pos):
+			dark = pos
+			break
+	check(dark.x >= 0 and img.get_pixelv(dark) == Color(0, 0, 0), "unexplored ground stays black")
+	check(here.v > 0.8, "the player's own tile is brightly lit")
