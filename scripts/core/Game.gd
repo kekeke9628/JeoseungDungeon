@@ -569,7 +569,7 @@ func _floor_boss() -> Monster:
 func _update_skill_button() -> void:
 	var c: CharacterClassData = GameState.player_class
 	if c:
-		dpad.set_skill(c.skill_name, GameState.skill_cooldown_left)
+		dpad.set_skill(c.skill_name, GameState.skill_cooldown_left, c.skill_id)
 
 func _on_player_hp_changed(current: int, _max_hp: int) -> void:
 	if current < _last_hp and is_instance_valid(camera):
