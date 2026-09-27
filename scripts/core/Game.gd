@@ -140,7 +140,12 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	GameState.player_class = class_data
 	player = Player.new()
 	world.add_child(player)
-	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
+	# the bare body, which worn gear is layered on (Player.refresh_gear)
+	var art_id: String = class_data.id + "_bare"
+	if SpriteLibrary.get_actor_frames(art_id).is_empty():
+		art_id = class_data.id
+	var stats: ActorStats = class_data.stats.duplicate()
+	player.setup(stats, class_data.color, class_data.glyph, class_data.display_name, art_id)
 	player.hp_changed.connect(hud.set_hp)
 	player.hp_changed.connect(_on_player_hp_changed)
 	player.status_changed.connect(_refresh_status_hud)

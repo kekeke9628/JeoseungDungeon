@@ -1,7 +1,9 @@
 """Generates the game's pixel art. Run:  python tools/gen_sprites.py
 
 - tile atlases, one per depth band (tools/gen_tiles.py)
-- characters: 24x24, two idle frames side by side (tools/actors24.py)
+- characters: 24x24, two idle frames side by side (tools/actors24.py); heroes
+  also as <id>_bare.png, the body that worn gear is layered on
+- worn-gear layers, one per piece of equipment (tools/gear24.py)
 - item icons: 16x16 from the ASCII templates in tools/sprite_templates.py
 - UI skins, button icons and the title backdrop (tools/gen_ui.py)
 All of it is drawn at 2x in the game, so every sprite has the same pixel size."""
@@ -10,6 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import actors24  # noqa: E402
+import gear24  # noqa: E402
 import gen_tiles  # noqa: E402
 import gen_ui  # noqa: E402
 import sprite_templates as T  # noqa: E402
@@ -84,9 +87,15 @@ def main():
     gen_ui.build()
     previews = []
     for aid in actors24.ACTORS:
-        strip = actors24.strip(aid)
+        if aid in gear24.HEROES:
+            save(actors24.strip(aid), "actors", aid + "_bare.png")
+            strip = actors24.join(gear24.dressed(aid, gear24.starting_gear(aid)))
+        else:
+            strip = actors24.strip(aid)
         save(strip, "actors", aid + ".png")
         previews.append(strip)
+    for gid in gear24.GEAR:
+        save(actors24.join(gear24.gear_frames(gid)), "gear", gid + ".png")
     icons = []
     for iid, (tpl, base, accent) in ITEM_ICONS.items():
         img = render(tpl, palette(base, accent))
@@ -95,7 +104,7 @@ def main():
     if os.environ.get("SHEET_DIR"):
         sheet(previews, 4, 5).save(os.path.join(os.environ["SHEET_DIR"], "actors.png"))
         sheet(icons, 11, 6).save(os.path.join(os.environ["SHEET_DIR"], "items.png"))
-    print("actors: %d, item icons: %d" % (len(previews), len(icons)))
+    print("actors: %d, gear layers: %d, item icons: %d" % (len(previews), len(gear24.GEAR), len(icons)))
 
 
 if __name__ == "__main__":

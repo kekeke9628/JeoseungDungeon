@@ -8,6 +8,8 @@ signal gold_changed(new_gold: int)
 signal level_changed(new_level: int, xp: int, xp_to_next: int)
 signal leveled_up(new_level: int)
 signal skill_changed
+## Something was put on or taken off (or the whole outfit was reset or loaded).
+signal equipment_changed
 
 ## Body slots, in the order the paper doll lists them.
 const EQUIP_SLOTS: Array[String] = ["head", "weapon", "armor", "amulet", "ring", "boots"]
@@ -59,6 +61,7 @@ func reset_run() -> void:
 	hunger = 0
 	last_attacker = ""
 	equipped.clear()
+	equipment_changed.emit()
 	inventory.clear()
 	identified_types.clear()
 

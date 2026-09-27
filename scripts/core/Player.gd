@@ -19,8 +19,21 @@ const WELL_FED: int = 150
 ## While starving, 1 HP is lost every this many turns.
 const STARVE_INTERVAL: int = 2
 
+## Worn-gear layers, bottom to top: the order tools/gear24.py draws them for.
+const GEAR_ORDER: Array[String] = ["boots", "armor", "amulet", "ring", "head", "weapon"]
+
 func _ready() -> void:
 	TurnManager.register_player(self)
+	GameState.equipment_changed.connect(refresh_gear)
+
+## Dresses the sprite in what is worn, so gear shows on the map.
+func refresh_gear() -> void:
+	var sets: Array = []
+	for slot in GEAR_ORDER:
+		var item: ItemData = GameState.equipped.get(slot)
+		if item != null:
+			sets.append(SpriteLibrary.get_gear_frames(item.id))
+	set_layers(sets)
 
 ## Attempts to move one tile in dir; attacks if a monster occupies the target
 ## tile, moves if walkable and empty, otherwise does nothing.
@@ -66,7 +79,7 @@ func revive(hp_fraction: float) -> void:
 	is_alive = true
 	modulate = Color.WHITE
 	statuses.clear()
-	sprite.modulate = Color.WHITE
+	body.modulate = Color.WHITE
 	status_changed.emit()
 	current_hp = maxi(1, int(stats.max_hp * hp_fraction))
 	_update_hp_bar()
@@ -107,12 +120,12 @@ func has_status(status_name: String) -> bool:
 
 func apply_status(status_name: String, turns: int) -> void:
 	statuses[status_name] = maxi(int(statuses.get(status_name, 0)), turns)
-	sprite.modulate = _rest_tint()
+	body.modulate = _rest_tint()
 	status_changed.emit()
 
 func cure_status(status_name: String) -> void:
 	if statuses.erase(status_name):
-		sprite.modulate = _rest_tint()
+		body.modulate = _rest_tint()
 		status_changed.emit()
 
 ## Called once per player turn: poison hurts, then all timers count down.
@@ -128,7 +141,7 @@ func tick_statuses() -> void:
 		statuses[key] -= 1
 		if statuses[key] <= 0:
 			statuses.erase(key)
-	sprite.modulate = _rest_tint()
+	body.modulate = _rest_tint()
 	status_changed.emit()
 
 ## Called once per player turn, after tick_statuses().

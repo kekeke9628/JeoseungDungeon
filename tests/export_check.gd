@@ -30,6 +30,8 @@ func _initialize() -> void:
 			atlases += 1
 	_check(atlases == 4, "tile atlases load (%d/4)" % atlases)
 	_check(sprites.get_actor_frames("yeomra").size() == 2, "character idle frames load")
+	_check(sprites.get_actor_frames("hwarang_bare").size() == 2, "bare hero bodies load")
+	_check(sprites.get_gear_frames("satgat").size() == 2, "worn-gear layers load")
 	_check(ui.icon("attack") != null, "button icons load")
 	_check(ui.panel_box() is StyleBoxTexture, "panel skin loads")
 	print("== export check: %d failure(s)" % failures)

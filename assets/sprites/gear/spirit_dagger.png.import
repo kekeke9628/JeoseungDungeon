@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dvj55ax0bd2r"
-path="res://.godot/imported/paperdoll_body.png-14b25915ffef74bdea53322d1db85cfc.ctex"
+uid="uid://bj2yiaw00dqmq"
+path="res://.godot/imported/spirit_dagger.png-391bd940701d9d789f4b548726c2f6bc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/ui/paperdoll_body.png"
-dest_files=["res://.godot/imported/paperdoll_body.png-14b25915ffef74bdea53322d1db85cfc.ctex"]
+source_file="res://assets/sprites/gear/spirit_dagger.png"
+dest_files=["res://.godot/imported/spirit_dagger.png-391bd940701d9d789f4b548726c2f6bc.ctex"]
 
 [params]
 

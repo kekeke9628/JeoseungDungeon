@@ -68,6 +68,9 @@ var shadow: Node2D
 var _hit_from: Vector2i = NO_HIT
 var _flash_tween: Tween
 var _frames: Array[Texture2D] = []
+var _frame_index: int = 0
+## Worn-gear layers over the sprite: [{"rect": TextureRect, "frames": Array}].
+var _layers: Array = []
 var _move_tween: Tween
 var _body_tween: Tween
 
@@ -210,6 +213,37 @@ func _restart_body_tween() -> void:
 func _face(dx: int) -> void:
 	if dx != 0:
 		sprite.flip_h = dx < 0
+		for layer in _layers:
+			layer.rect.flip_h = sprite.flip_h
+
+## Stacks layers (each an array of idle frames) over the sprite, bottom to top,
+## replacing any there were. They animate, flip and flash with the body.
+func set_layers(frame_sets: Array) -> void:
+	for layer in _layers:
+		layer.rect.queue_free()
+	_layers.clear()
+	for frames in frame_sets:
+		if frames.is_empty():
+			continue
+		var rect := TextureRect.new()
+		rect.size = sprite.size
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_SCALE
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rect.use_parent_material = true
+		rect.flip_h = sprite.flip_h
+		rect.texture = frames[_frame_index % frames.size()]
+		body.add_child(rect)
+		_layers.append({"rect": rect, "frames": frames})
+
+func layer_count() -> int:
+	return _layers.size()
+
+func _show_frame(i: int) -> void:
+	_frame_index = i
+	sprite.texture = _frames[i]
+	for layer in _layers:
+		layer.rect.texture = layer.frames[i % layer.frames.size()]
 
 ## Idle animation: steps through the art's frames (breathing, or a ghost
 ## rising and sinking) forever. The pace comes from the instance id rather
@@ -219,8 +253,8 @@ func _start_idle() -> void:
 		return
 	var step_time: float = IDLE_FRAME_TIME + float(get_instance_id() % 5) * 0.04
 	var tw := sprite.create_tween().set_loops()
-	for f in _frames:
-		tw.tween_callback(func(): sprite.texture = f)
+	for i in range(_frames.size()):
+		tw.tween_callback(_show_frame.bind(i))
 		tw.tween_interval(step_time)
 
 ## Leaves a fading, rising copy of the sprite behind, so a kill is seen even
