@@ -3,6 +3,7 @@
 - tile atlases, one per depth band (tools/gen_tiles.py)
 - characters: 24x24, two idle frames side by side (tools/actors24.py)
 - item icons: 16x16 from the ASCII templates in tools/sprite_templates.py
+- UI skins, button icons and the title backdrop (tools/gen_ui.py)
 All of it is drawn at 2x in the game, so every sprite has the same pixel size."""
 import os
 import sys
@@ -10,6 +11,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import actors24  # noqa: E402
 import gen_tiles  # noqa: E402
+import gen_ui  # noqa: E402
 import sprite_templates as T  # noqa: E402
 from pixel_kit import canvas, shade, sheet  # noqa: E402
 
@@ -79,6 +81,7 @@ def save(img, *parts):
 
 def main():
     gen_tiles.build()
+    gen_ui.build()
     previews = []
     for aid in actors24.ACTORS:
         strip = actors24.strip(aid)

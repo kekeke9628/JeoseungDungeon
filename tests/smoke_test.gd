@@ -1208,14 +1208,14 @@ func _test_hunger() -> void:
 	GameState.hunger = Player.HUNGRY - 1
 	p.wait_turn()
 	check(lines.any(func(l): return l.contains("배가 고프다")), "the player is warned when hungry")
-	check(game.hud._label.text.contains("배고픔"), "the HUD shows hunger")
+	check(game.hud.summary().contains("배고픔"), "the HUD shows hunger")
 	GameState.hunger = Player.STARVING - 1
 	p.current_hp = p.stats.max_hp - 20
 	var hp: int = p.current_hp
 	for i in range(10):
 		p.wait_turn()
 	check(GameState.hunger == Player.STARVING, "hunger stops rising once starving")
-	check(game.hud._label.text.contains("굶주림"), "the HUD shows starvation")
+	check(game.hud.summary().contains("굶주림"), "the HUD shows starvation")
 	check(p.current_hp == hp - 10 / Player.STARVE_INTERVAL, "starving drains HP and stops healing")
 	turns = GameState.turn_count
 	game._on_item_chosen(rice)
@@ -1223,7 +1223,7 @@ func _test_hunger() -> void:
 	var took_turn: bool = GameState.turn_count == turns + 1
 	check(took_turn and GameState.hunger == fed, "eating takes a turn and eases hunger")
 	check(_count_in_bag("jumeokbap") == 0, "the food is used up")
-	check(not game.hud._label.text.contains("배고픔"), "a meal clears the hunger mark")
+	check(not game.hud.summary().contains("배고픔"), "a meal clears the hunger mark")
 	var eaten: bool = lines.any(func(l): return l.contains("주먹밥을 먹었다"))
 	check(eaten, "eating is logged")
 	GameState.hunger = 123
@@ -1248,9 +1248,11 @@ func _test_hunger() -> void:
 	game.player.wait_turn()
 	game.player.wait_turn()
 	check(not game.player.is_alive and GameState.last_attacker == "굶주림", "starvation can kill")
+	var said: String = game.game_over_screen._detail.text
+	check(said.contains("굶주림에 쓰러졌다"), "the death screen says starvation (got %s)" % said)
 	game._on_revive()
 	check(game.player.is_alive and GameState.hunger == 0, "a revive also clears hunger")
-	check(not game.hud._label.text.contains("굶주림"), "the HUD drops the starving mark on revive")
+	check(not game.hud.summary().contains("굶주림"), "the HUD drops the starving mark on revive")
 	IAPManager.reset_for_tests()
 	MessageBus.message_logged.disconnect(log_line)
 

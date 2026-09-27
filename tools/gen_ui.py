@@ -1,0 +1,383 @@
+"""Generates the UI art under assets/sprites/ui/: nine-slice button and panel
+skins (black lacquer with a gold inlay line), a frame for the HUD bars,
+button icons, and the title-screen backdrop. Run:  python tools/gen_ui.py
+(python tools/gen_sprites.py runs it too).
+
+Skins and icons are drawn small and saved enlarged with nearest-neighbour
+(skins 2x, icons 3x, backdrop 4x), so they are crisp at the size the game
+shows them without any scaling in the engine."""
+import math
+import os
+import random
+import sys
+
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pixel_kit import Noise, canvas, put, shade, sheet  # noqa: E402
+
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites", "ui")
+INK = (14, 10, 18)
+GOLD = (198, 154, 74)
+GOLD_HI = (244, 210, 124)
+LACQUER = (46, 32, 38)
+PANEL = (22, 18, 32)
+
+ICON_PAL = {"O": INK, "W": (236, 232, 222), "S": (150, 146, 162), "G": (226, 180, 70), "Y": (250, 222, 96),
+            "R": (200, 48, 52), "B": (122, 80, 50), "L": (120, 170, 240)}
+
+
+def up(img, k):
+    return img.resize((img.width * k, img.height * k), Image.NEAREST)
+
+
+def save(img, name, k):
+    os.makedirs(OUT, exist_ok=True)
+    up(img, k).save(os.path.join(OUT, name + ".png"))
+
+
+# ------------------------------------------------------------ skins
+
+def frame(size, fill, border, top_light, bottom_dark, noise_seed=None, corners=False):
+    """A rounded box: ink outline, a coloured inlay line, a filled middle lit
+    along the top edge. size is in art pixels."""
+    w, h = size
+    img = canvas(w, h)
+    noise = Noise(noise_seed, 16, 4) if noise_seed else None
+    for y in range(h):
+        for x in range(w):
+            edge = min(x, y, w - 1 - x, h - 1 - y)
+            corner = (x in (0, w - 1)) and (y in (0, h - 1))
+            if corner:
+                continue
+            if edge == 0:
+                put(img, x, y, INK)
+            elif edge == 1:
+                put(img, x, y, border)
+            else:
+                c = fill
+                if noise:
+                    c = shade(c, (noise.at(x, y) - 0.5) * 0.25)
+                if y == 2:
+                    c = shade(c, top_light)
+                elif y == h - 3:
+                    c = shade(c, bottom_dark)
+                put(img, x, y, c)
+    if corners:  # small gold diamonds just inside each corner
+        for cx, cy in ((3, 3), (w - 4, 3), (3, h - 4), (w - 4, h - 4)):
+            put(img, cx, cy, GOLD_HI)
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                put(img, cx + dx, cy + dy, GOLD)
+    return img
+
+
+def skins():
+    save(frame((16, 16), LACQUER, GOLD, 0.35, -0.3), "button_normal", 2)
+    save(frame((16, 16), shade(LACQUER, -0.3), GOLD_HI, -0.2, 0.1), "button_pressed", 2)
+    save(frame((16, 16), (40, 36, 44), (86, 80, 92), 0.1, -0.2), "button_disabled", 2)
+    save(frame((24, 24), PANEL, GOLD, 0.15, -0.2, noise_seed="panel", corners=True), "panel", 2)
+    # frame for the HUD bars (the fills are drawn in code)
+    save(frame((8, 8), (20, 16, 24), (60, 50, 64), 0.0, 0.0), "bar_frame", 2)
+
+
+# ------------------------------------------------------------ icons
+
+ARROW = """
+................
+.......OO.......
+......OWWO......
+.....OWWWWO.....
+....OWWWWWWO....
+...OWWWWWWWWO...
+..OWWWWWWWWWWO..
+..OOOOWWWWOOOO..
+.....OWWWWO.....
+.....OWWWWO.....
+.....OWWWWO.....
+.....OWWWWO.....
+.....OWWWWO.....
+.....OSSSSO.....
+.....OOOOOO.....
+................
+"""
+
+HOURGLASS = """
+................
+...OOOOOOOOOO...
+...OGGGGGGGGO...
+...OOOOOOOOOO...
+....OWYYYYWO....
+....OWYYYYWO....
+.....OWYYWO.....
+......OWWO......
+......OWWO......
+.....OWWWWO.....
+....OWWYYWWO....
+....OWYYYYWO....
+...OOOOOOOOOO...
+...OGGGGGGGGO...
+...OOOOOOOOOO...
+................
+"""
+
+SWORD = """
+................
+............OOO.
+...........OWWO.
+..........OWWSO.
+.........OWWSO..
+........OWWSO...
+.......OWWSO....
+..OO..OWWSO.....
+..OGOOWWSO......
+...OGOWSO.......
+....OGGO........
+...OBOOGO.......
+..OBO..OGO......
+.OBO....OO......
+.OO.............
+................
+"""
+
+BOLT = """
+................
+.........OOOO...
+........OYYYO...
+.......OYYYO....
+......OYYYO.....
+.....OYYYOOOO...
+....OYYYYYYYO...
+....OOOOYYYO....
+......OYYYO.....
+.....OYYYO......
+....OYYO........
+....OYO.........
+....OO..........
+................
+................
+................
+"""
+
+STAIRS = """
+................
+................
+................
+OOOOOO..........
+OWWWWO..........
+OSSSSOOOOOO.....
+OSSSSOWWWWO.....
+OSSSSOSSSSOOOOOO
+OSSSSOSSSSOWWWWO
+OSSSSOSSSSOSSSSO
+OSSSSOSSSSOSSSSO
+OOOOOOOOOOOOOOOO
+................
+................
+................
+................
+"""
+
+GEAR = """
+................
+......OOOO......
+..OO..OWWO..OO..
+.OWWOOWWWWOOWWO.
+.OWWWWWWWWWWWSO.
+..OWWWWSSWWWSO..
+.OOWWWSOOSWWSOO.
+OWWWWSO..OSWWSSO
+OWWWWSO..OSWSSSO
+.OOWWWSOOSWSSOO.
+..OWWWWSSWSSSO..
+.OWWWWSSSSSSSSO.
+.OWSOOSSSSOOSSO.
+..OO..OSSO..OO..
+......OOOO......
+................
+"""
+
+POUCH = """
+................
+......O..O......
+.....OGOOGO.....
+......OGGO......
+.....OOGGOO.....
+....ORRGGRRO....
+...ORRRRRRRRO...
+..ORRRRRRRRRRO..
+..ORRRGGGGRRRO..
+..ORRRRGGRRRRO..
+..ORRRRRRRRRSO..
+..OSRRRRRRRRSO..
+...OSSRRRRSSO...
+....OOOOOOOO....
+................
+................
+"""
+
+
+def ascii_icon(tpl):
+    rows = tpl.strip("\n").split("\n")
+    img = canvas(16, 16)
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch in ICON_PAL:
+                put(img, x, y, ICON_PAL[ch])
+    return img
+
+
+def fan_icon():
+    """A five-colour shaman's fan, open upward from its handle."""
+    img = canvas(16, 16)
+    colors = [(60, 100, 200), (206, 50, 50), (240, 200, 60), (236, 236, 236), (40, 40, 48)]
+    px, py = 7.5, 13.0
+    for y in range(16):
+        for x in range(16):
+            dx, dy = x + 0.5 - px, y + 0.5 - py
+            r = math.hypot(dx, dy)
+            a = math.degrees(math.atan2(-dy, dx))
+            if 3.0 <= r <= 9.5 and 15 <= a <= 165:
+                seg = min(4, int((a - 15) / 30))
+                put(img, x, y, colors[seg])
+    for y in range(11, 16):
+        put(img, 7, y, (122, 80, 50))
+        put(img, 8, y, (90, 58, 36))
+    return outline_ink(img)
+
+
+def slash_icon():
+    img = canvas(16, 16)
+    for y in range(16):
+        for x in range(16):
+            r = math.hypot(x - 3.0, y - 13.0)
+            if 9.0 <= r <= 11.6 and x > 2 and y < 13:
+                put(img, x, y, (236, 244, 255) if r < 10.4 else (120, 170, 240))
+    return outline_ink(img)
+
+
+def outline_ink(img):
+    src = img.copy()
+    for y in range(16):
+        for x in range(16):
+            if src.getpixel((x, y))[3]:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < 16 and 0 <= ny < 16 and src.getpixel((nx, ny))[3]:
+                    put(img, x, y, INK)
+                    break
+    return img
+
+
+def icons():
+    arrow = ascii_icon(ARROW)
+    out = {
+        "icon_up": arrow,
+        "icon_down": arrow.rotate(180),
+        "icon_left": arrow.rotate(90),
+        "icon_right": arrow.rotate(-90),
+        "icon_wait": ascii_icon(HOURGLASS),
+        "icon_attack": ascii_icon(SWORD),
+        "icon_descend": ascii_icon(STAIRS),
+        "icon_bag": ascii_icon(POUCH),
+        "icon_settings": ascii_icon(GEAR),
+        "icon_salpuri": fan_icon(),
+        "icon_ilseom": slash_icon(),
+        "icon_noejeon": ascii_icon(BOLT),
+    }
+    for name, img in out.items():
+        save(img, name, 3)
+    return list(out.values())
+
+
+# ------------------------------------------------------------ title backdrop
+
+def backdrop():
+    """180x320 night scene, shown at 4x: a pale moon over layered mountains,
+    a red hongsalmun gate at the end of a misty stone road."""
+    w, h = 180, 320
+    img = canvas(w, h)
+    rng = random.Random("backdrop")
+    top, mid, low = (8, 6, 20), (40, 22, 58), (18, 12, 30)
+    for y in range(h):
+        t = y / h
+        if t < 0.55:
+            c = tuple(int(top[i] + (mid[i] - top[i]) * (t / 0.55)) for i in range(3))
+        else:
+            c = tuple(int(mid[i] + (low[i] - mid[i]) * ((t - 0.55) / 0.45)) for i in range(3))
+        for x in range(w):
+            put(img, x, y, c)
+    for _ in range(90):  # stars
+        x, y = rng.randrange(w), rng.randrange(int(h * 0.5))
+        put(img, x, y, (200, 200, 230) if rng.random() < 0.7 else (255, 240, 200))
+    mx, my, mr = 128, 62, 20  # moon with a soft halo
+    for y in range(my - 40, my + 41):
+        for x in range(mx - 40, mx + 41):
+            d = math.hypot(x - mx, y - my)
+            if d <= mr:
+                spot = 0.06 if (x - mx + 6) ** 2 + (y - my - 3) ** 2 < 30 else 0.0
+                put(img, x, y, shade((236, 232, 214), -0.15 * (d / mr) - spot))
+            elif d <= 40 and 0 <= x < w and 0 <= y < h:
+                base = img.getpixel((x, y))
+                k = (1 - (d - mr) / 20) * 0.35 if d < 40 else 0
+                put(img, x, y, tuple(int(base[i] + (200 - base[i]) * max(0, k)) for i in range(3)))
+    ridges = [((30, 22, 48), 168, 24, 0.031, 1.0), ((22, 16, 36), 190, 18, 0.05, 2.3),
+              ((14, 10, 24), 212, 10, 0.08, 4.1)]
+    for color, base_y, amp, freq, phase in ridges:
+        for x in range(w):
+            top_y = int(base_y - amp * (0.6 * math.sin(x * freq + phase) + 0.4 * math.sin(x * freq * 2.7 + phase * 2)))
+            for y in range(top_y, h):
+                put(img, x, y, color)
+    ground = (16, 12, 22)
+    for y in range(226, h):
+        for x in range(w):
+            put(img, x, y, ground)
+    for y in range(226, h):  # stone road narrowing toward the gate
+        half = 6 + (y - 226) * 0.55
+        for x in range(int(90 - half), int(90 + half) + 1):
+            stone = (58, 50, 66) if ((x // 6) + (y // 4)) % 2 else (50, 43, 58)
+            if (y % 4 == 0) or ((x + (y // 4) * 3) % 6 == 0):
+                stone = (30, 25, 38)
+            put(img, x, y, stone)
+    red, dark_red = (170, 36, 40), (110, 20, 28)
+    for px in (70, 108):  # hongsalmun: two posts, two beams, a row of arrow spikes
+        for y in range(150, 232):
+            put(img, px, y, red)
+            put(img, px + 1, y, red)
+            put(img, px + 2, y, dark_red)
+    for by in (158, 166):
+        for x in range(64, 117):
+            put(img, x, by, red)
+            put(img, x, by + 1, dark_red)
+    for x in range(72, 108, 3):
+        for y in range(146, 158):
+            put(img, x, y, red if y > 148 else (220, 190, 90))
+    for i in range(3):  # taegeuk-like mark in the middle of the top beam
+        put(img, 89 + i, 162, (60, 90, 170) if i < 2 else (200, 50, 50))
+    for y in range(200, 250):  # mist over the ground
+        a = max(0.0, 1 - abs(y - 226) / 24) * 0.35
+        for x in range(w):
+            wave = 0.5 + 0.5 * math.sin(x * 0.08 + y * 0.3)
+            base = img.getpixel((x, y))
+            k = a * wave
+            put(img, x, y, tuple(int(base[i] + (150 - base[i]) * k) for i in range(3)))
+    for _ in range(14):  # soul fires drifting by the road
+        x, y = rng.randrange(20, 160), rng.randrange(150, 260)
+        put(img, x, y, (200, 230, 255))
+        put(img, x, y - 1, (150, 190, 255))
+    return img
+
+
+def build():
+    skins()
+    ic = icons()
+    bd = backdrop()
+    save(bd, "backdrop", 4)
+    if os.environ.get("SHEET_DIR"):
+        sheet(ic, 6, 4).save(os.path.join(os.environ["SHEET_DIR"], "ui_icons.png"))
+        up(bd, 2).save(os.path.join(os.environ["SHEET_DIR"], "backdrop.png"))
+    print("ui: skins, %d icons, backdrop" % len(ic))
+
+
+if __name__ == "__main__":
+    build()

@@ -68,7 +68,9 @@ func _init() -> void:
 	dim.size = Vector2(720, 1280)
 	add_child(dim)
 	var bg := UITheme.make_panel(size)
-	(bg.get_theme_stylebox("panel") as StyleBoxFlat).bg_color.a = 1.0
+	var flat := bg.get_theme_stylebox("panel") as StyleBoxFlat
+	if flat != null:  # the flat fallback style is see-through; the art is not
+		flat.bg_color.a = 1.0
 	add_child(bg)
 
 	var title := Label.new()

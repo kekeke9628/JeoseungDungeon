@@ -15,15 +15,20 @@ func _init() -> void:
 	size = Vector2(720, 1280)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.85)
+	bg.color = Color(0, 0, 0, 0.8)
 	bg.size = size
 	add_child(bg)
+	var panel := UITheme.make_panel(Vector2(620, 560))
+	panel.position = Vector2(50, 370)
+	add_child(panel)
 
 	_title = Label.new()
 	_title.position = Vector2(0, 420)
 	_title.size = Vector2(720, 80)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_size_override("font_size", 48)
+	_title.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_title.add_theme_constant_override("outline_size", 10)
 	add_child(_title)
 
 	_detail = Label.new()
@@ -53,12 +58,13 @@ func show_result(victory: bool, floor_reached: int, level: int, turns: int, revi
 	_revive_btn.visible = not victory and revive_count > 0
 	_revive_btn.text = "부활 부적 사용 (남은 %d개)" % revive_count
 	_title.text = "저승을 탈출했다!" if victory else "영혼이 저승에 묶였다..."
+	_title.add_theme_color_override("font_color", UITheme.GOLD if victory else Color(0.9, 0.45, 0.45))
 	_detail.text = "도달: %d층  레벨: %d  턴: %d" % [floor_reached, level, turns]
 	if not victory and not cause.is_empty():
 		_detail.text += "\n%s" % _cause_text(cause)
 	visible = true
 
 func _cause_text(cause: String) -> String:
-	if cause == "독" or cause == "함정":
+	if cause in ["독", "함정", "굶주림"]:
 		return "%s에 쓰러졌다." % cause
 	return "%s에게 쓰러졌다." % cause

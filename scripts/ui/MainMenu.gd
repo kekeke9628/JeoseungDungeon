@@ -3,6 +3,44 @@ extends Control
 
 const GAME_SCENE: String = "res://scenes/Game.tscn"
 const CLASS_DIR: String = "res://resources/classes"
+## Class portraits on the selection cards: 24px art at 4x.
+const PORTRAIT_PX: int = 96
+
+## Soul fires drifting up over the title backdrop. Own RNG, like all effects.
+class Wisps:
+	extends Control
+
+	const COUNT: int = 18
+	var _rng := RandomNumberGenerator.new()
+	var _wisps: Array = []
+	var _time: float = 0.0
+
+	func _ready() -> void:
+		_rng.seed = 7
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for i in range(COUNT):
+			_wisps.append(_spawn(true))
+
+	func _spawn(anywhere: bool) -> Dictionary:
+		var y: float = _rng.randf_range(560.0, 1280.0) if anywhere else 1290.0
+		return {"x": _rng.randf_range(40.0, 680.0), "y": y, "v": _rng.randf_range(18.0, 40.0),
+			"phase": _rng.randf() * TAU}
+
+	func _process(delta: float) -> void:
+		_time += delta
+		for i in range(_wisps.size()):
+			_wisps[i].y -= _wisps[i].v * delta
+			if _wisps[i].y < 480.0:
+				_wisps[i] = _spawn(false)
+		queue_redraw()
+
+	func _draw() -> void:
+		for w in _wisps:
+			var fade: float = clampf((w.y - 480.0) / 240.0, 0.0, 1.0)
+			var x: float = w.x + sin(_time * 1.2 + w.phase) * 10.0
+			var at := Vector2(floorf(x / 4.0) * 4.0, floorf(w.y / 4.0) * 4.0)
+			draw_rect(Rect2(at, Vector2(8, 8)), Color(0.55, 0.75, 1.0, 0.25 * fade))
+			draw_rect(Rect2(at + Vector2(2, 2), Vector2(4, 4)), Color(0.85, 0.93, 1.0, 0.8 * fade))
 
 var _main_box: Control
 var _class_box: Control
@@ -19,6 +57,16 @@ func _ready() -> void:
 	bg.color = Color(0.04, 0.03, 0.07)
 	bg.size = size
 	add_child(bg)
+	var backdrop_path: String = UITheme.UI_DIR + "backdrop.png"
+	if ResourceLoader.exists(backdrop_path):
+		var art := TextureRect.new()
+		art.texture = load(backdrop_path)
+		art.size = size
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(art)
+	var wisps := Wisps.new()
+	wisps.size = size
+	add_child(wisps)
 	AudioManager.play_music("ambient")
 	_build_main_box()
 	_build_class_box()
@@ -59,10 +107,16 @@ func _build_main_box() -> void:
 	_main_box = Control.new()
 	_main_box.size = size
 	add_child(_main_box)
-	var title := _make_label("저승던전", Vector2(0, 260), Vector2(720, 100), 72, _main_box)
+	var title := _make_label("저승던전", Vector2(0, 260), Vector2(720, 100), 76, _main_box)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
+	title.add_theme_color_override("font_outline_color", Color(0.12, 0.05, 0.08))
+	title.add_theme_constant_override("outline_size", 14)
+	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	title.add_theme_constant_override("shadow_offset_y", 6)
 	_add_showcase()
-	_make_label("한국 설화 로그라이크", Vector2(0, 370), Vector2(720, 50), 28, _main_box)
+	var sub := _make_label("한국 설화 로그라이크", Vector2(0, 370), Vector2(720, 50), 28, _main_box)
+	sub.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	sub.add_theme_constant_override("outline_size", 6)
 	var new_btn := _make_button("새 게임", Vector2(210, 560), Vector2(300, 90), 32, _main_box)
 	new_btn.pressed.connect(_show_classes)
 	var cont_btn := _make_button("이어하기", Vector2(210, 680), Vector2(300, 90), 32, _main_box)
@@ -90,6 +144,10 @@ func _build_class_box() -> void:
 			c.description, c.skill_name, c.skill_description, c.skill_cooldown]
 		var b := _make_button(text, Vector2(40, y), Vector2(640, 250), 22, _class_box)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.icon = SpriteLibrary.get_actor(c.id)
+		b.expand_icon = true
+		b.add_theme_constant_override("icon_max_width", PORTRAIT_PX)
 		b.pressed.connect(_start_new_run.bind(c.id))
 		y += 270.0
 	var back := _make_button("뒤로", Vector2(210, 1180), Vector2(300, 70), 26, _class_box)
@@ -129,7 +187,7 @@ func _continue_run(data: Dictionary) -> void:
 	GameState.pending_continue = true
 	get_tree().change_scene_to_file(GAME_SCENE)
 
-## A bobbing row of characters under the title.
+## A bobbing row of characters under the title (3x, so pixels stay square).
 func _add_showcase() -> void:
 	var ids: Array[String] = ["mudang", "dokkaebi", "gumiho", "jeoseung_saja", "yeomra"]
 	var x0: float = (720.0 - ids.size() * 96.0) / 2.0
@@ -139,8 +197,8 @@ func _add_showcase() -> void:
 			continue
 		var r := TextureRect.new()
 		r.texture = tex
-		r.position = Vector2(x0 + i * 96.0 + 8.0, 450.0)
-		r.size = Vector2(80, 80)
+		r.position = Vector2(x0 + i * 96.0 + 12.0, 450.0)
+		r.size = Vector2(72, 72)
 		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		r.stretch_mode = TextureRect.STRETCH_SCALE
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
