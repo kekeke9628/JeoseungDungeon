@@ -21,6 +21,8 @@ const FLICKER: float = 0.035
 ## Past the map edge everything is dark too; this much margin covers any view.
 const OUTSIDE: float = 4000.0
 
+## The last light map built, one pixel per tile.
+var light_map: Image
 var _tex: ImageTexture
 var _size := Vector2i.ZERO
 var _time: float = 0.0
@@ -50,6 +52,7 @@ func refresh() -> void:
 		for x in range(w):
 			var pos := Vector2i(x, y)
 			img.set_pixel(x, y, _light_at(pos, origin, lights))
+	light_map = img
 	if _tex == null or _size != Vector2i(w, h):
 		_tex = ImageTexture.create_from_image(img)
 		_size = Vector2i(w, h)

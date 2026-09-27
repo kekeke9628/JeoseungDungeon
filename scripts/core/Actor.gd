@@ -23,8 +23,10 @@ const HOP_HEIGHT: float = 5.0
 const LUNGE_REACH: float = 0.35  # fraction of a tile
 const LUNGE_TIME: float = 0.07
 const SHAKE_PX: float = 4.0
-const BOB_PX: float = 3.0
 const DEATH_TIME: float = 0.4
+## Idle animation: seconds per frame (each actor a little different).
+const IDLE_FRAME_TIME: float = 0.5
+const SHADOW_COLOR := Color(0, 0, 0, 0.32)
 
 var stats: ActorStats
 var current_hp: int = 1
@@ -39,11 +41,26 @@ var visual: ColorRect
 var label: Label
 var hp_bar: ColorRect
 var sprite: TextureRect
+var shadow: Node2D
+var _frames: Array[Texture2D] = []
 var _move_tween: Tween
 var _body_tween: Tween
 
+## An oval on the floor under the actor. It stays put when the body hops or
+## lunges, which is what makes those read as leaving the ground.
+class GroundShadow:
+	extends Node2D
+
+	func _draw() -> void:
+		var ts: float = Constants.TILE_SIZE
+		draw_set_transform(Vector2(ts * 0.5, ts * 0.9), 0.0, Vector2(1.0, 0.3))
+		draw_circle(Vector2.ZERO, ts * 0.3, SHADOW_COLOR)
+
 func _init() -> void:
 	var ts: int = Constants.TILE_SIZE
+	shadow = GroundShadow.new()
+	shadow.visible = false
+	add_child(shadow)
 	body = Node2D.new()
 	add_child(body)
 	visual = ColorRect.new()
@@ -82,19 +99,22 @@ func setup(p_stats: ActorStats, p_color: Color, p_glyph: String, p_display_name:
 	display_name = p_display_name
 	visual.color = p_color
 	label.text = p_glyph
-	var tex: Texture2D = SpriteLibrary.get_actor(p_sprite_id)
-	if tex != null:
-		sprite.texture = tex
+	_frames = SpriteLibrary.get_actor_frames(p_sprite_id)
+	if not _frames.is_empty():
+		sprite.texture = _frames[0]
 		sprite.visible = true
 		visual.color = Color(0, 0, 0, 0)
 		label.text = ""
-		_start_idle_bob()
+		shadow.visible = true
+		_start_idle()
 	_update_hp_bar()
 
 ## Places the actor on a tile. With animate, a one-tile step slides and hops
 ## there; anything else (spawning, a floor change, a teleport) snaps.
 func move_to_grid(pos: Vector2i, animate: bool = false) -> void:
 	var step: bool = absi(pos.x - grid_pos.x) + absi(pos.y - grid_pos.y) == 1
+	if step:
+		_face(pos.x - grid_pos.x)
 	grid_pos = pos
 	var target := Vector2(pos.x * Constants.TILE_SIZE, pos.y * Constants.TILE_SIZE)
 	if _move_tween != null and _move_tween.is_valid():
@@ -112,6 +132,7 @@ func move_to_grid(pos: Vector2i, animate: bool = false) -> void:
 func play_attack(target_pos: Vector2i) -> void:
 	if not is_inside_tree() or not visible:
 		return
+	_face(target_pos.x - grid_pos.x)
 	var toward := Vector2(target_pos - grid_pos).normalized()
 	var reach := toward * Constants.TILE_SIZE * LUNGE_REACH
 	_restart_body_tween()
@@ -132,13 +153,22 @@ func _restart_body_tween() -> void:
 		_body_tween.kill()
 	_body_tween = create_tween()
 
-## Breathing: the sprite drifts up and down forever. The phase comes from the
-## instance id rather than the RNG so animation never shifts the game's dice.
-func _start_idle_bob() -> void:
-	var half: float = 0.55 + float(get_instance_id() % 5) * 0.05
+## Characters are drawn facing right; one heading left is mirrored.
+func _face(dx: int) -> void:
+	if dx != 0:
+		sprite.flip_h = dx < 0
+
+## Idle animation: steps through the art's frames (breathing, or a ghost
+## rising and sinking) forever. The pace comes from the instance id rather
+## than the RNG so animation never shifts the game's dice.
+func _start_idle() -> void:
+	if _frames.size() < 2:
+		return
+	var step_time: float = IDLE_FRAME_TIME + float(get_instance_id() % 5) * 0.04
 	var tw := sprite.create_tween().set_loops()
-	tw.tween_property(sprite, "position:y", -BOB_PX, half).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(sprite, "position:y", 0.0, half).set_trans(Tween.TRANS_SINE)
+	for f in _frames:
+		tw.tween_callback(func(): sprite.texture = f)
+		tw.tween_interval(step_time)
 
 ## Leaves a fading, rising copy of the sprite behind, so a kill is seen even
 ## though the actor itself is freed straight away.
@@ -147,6 +177,7 @@ func _spawn_death_fx() -> void:
 		return
 	var fx := TextureRect.new()
 	fx.texture = sprite.texture
+	fx.flip_h = sprite.flip_h
 	fx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	fx.stretch_mode = TextureRect.STRETCH_SCALE
 	fx.size = sprite.size
