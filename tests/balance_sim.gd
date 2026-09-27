@@ -54,6 +54,8 @@ func _bot_step() -> void:
 	var p = game.player
 	if not is_instance_valid(p) or not p.is_alive:
 		return
+	if _dodge_windup(p):
+		return
 	var turn_before: int = GameState.turn_count
 	_use_consumables(p)
 	if GameState.turn_count > turn_before or game._ended:
@@ -69,6 +71,26 @@ func _bot_step() -> void:
 		game._on_wait_pressed()
 	else:
 		game._on_direction_pressed(step)
+
+## Steps off the tiles a boss is about to strike, as a player reading the red
+## marks would (onto plain ground when it can).
+func _dodge_windup(p) -> bool:
+	var danger: Dictionary = {}
+	for m in TurnManager.monsters:
+		if is_instance_valid(m) and m.is_alive and m.is_winding_up():
+			for t in m.danger_tiles():
+				danger[t] = true
+	if not danger.has(p.grid_pos):
+		return false
+	for allow_hazard in [false, true]:
+		for d in DIRS:
+			var np: Vector2i = p.grid_pos + d
+			if not DungeonState.is_walkable(np) or DungeonState.get_actor_at(np) != null or danger.has(np):
+				continue
+			if allow_hazard or HazardSystem.at(np) == "":
+				game._on_direction_pressed(d)
+				return true
+	return false
 
 func _nearest_monster_dist(p) -> int:
 	var best: int = 9999

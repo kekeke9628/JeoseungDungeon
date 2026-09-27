@@ -93,6 +93,7 @@ def build_sfx():
     save("defeat", notes([392, 349, 311, 262], 0.25, vol=0.7))
     save("eat", eat_sfx())
     save("hit_heavy", heavy_hit_sfx())
+    save("windup", windup_sfx())
 
 
 def heavy_hit_sfx():
@@ -105,6 +106,20 @@ def heavy_hit_sfx():
     crunch = lowpass(rng.uniform(-1, 1, n), 4) * env(n, attack=0.001, decay=38) * 0.8
     click = sine(1800, dur, 0.25) * env(n, decay=120)
     return thump + crunch + click
+
+
+def windup_sfx():
+    """A boss gathering itself: a low growl that swells and rises in pitch.
+    Own RNG, so adding it left the other sounds unchanged."""
+    rng = np.random.default_rng(31)
+    dur = 0.55
+    n = int(SR * dur)
+    t = t_axis(dur)
+    swell = np.minimum(1.0, t / (dur * 0.8)) * np.exp(-np.maximum(0.0, t - dur * 0.8) * 25)
+    f = 70 + 60 * (t / dur) ** 2
+    growl = np.sin(2 * np.pi * np.cumsum(f) / SR) * (1 + 0.5 * np.sin(2 * np.pi * 23 * t))
+    rumble = lowpass(rng.uniform(-1, 1, n), 20) * 0.6
+    return (growl + rumble) * swell
 
 
 def eat_sfx():

@@ -30,3 +30,12 @@ enum AIType { WANDER, AGGRESSIVE, RANGED, AMBUSH }
 ## Once, when HP falls to this fraction of max, summon summon_count minions (0 = never).
 @export var summon_fraction: float = 0.0
 @export var summon_count: int = 2
+## A boss's signature move, warned a turn ahead so it can be dodged (after
+## Shattered Pixel Dungeon's Goo pumping up): "" none, "slam" (swells up, then
+## strikes every tile around it) or "charge" (lowers its horns, then rushes
+## down a straight line). See Monster.
+@export var boss_move: String = ""
+## Turns of ordinary fighting between two signature moves.
+@export var move_cooldown: int = 3
+## How much harder the signature move lands than an ordinary blow.
+@export var move_power: float = 2.0
