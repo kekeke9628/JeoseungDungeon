@@ -19,6 +19,20 @@ const WELL_FED: int = 150
 ## While starving, 1 HP is lost every this many turns.
 const STARVE_INTERVAL: int = 2
 
+## Status names as the player reads them, harmful ones first.
+const STATUS_NAMES := {
+	"poison": "독", "stun": "기절", "chill": "냉기",
+	"regen": "회춘", "haste": "신속", "sight": "심안", "invisible": "은신", "levitate": "부유",
+}
+## Said when a helpful effect wears off.
+const STATUS_ENDS := {
+	"regen": "회춘탕의 기운이 다했다.", "haste": "몸이 다시 무거워졌다.",
+	"sight": "눈앞이 다시 좁아졌다.", "invisible": "모습이 다시 드러났다.",
+	"levitate": "몸이 천천히 땅에 내려앉았다.",
+}
+## How high a levitating player floats, in screen px.
+const FLOAT_PX: float = 8.0
+
 ## Worn-gear layers, bottom to top: the order tools/gear24.py draws them for.
 const GEAR_ORDER: Array[String] = ["boots", "armor", "amulet", "ring", "head", "weapon"]
 
@@ -42,6 +56,7 @@ func try_move(dir: Vector2i) -> bool:
 	var target := grid_pos + dir
 	var blocking_actor = DungeonState.get_actor_at(target)
 	if blocking_actor != null and blocking_actor != self:
+		reveal()
 		play_attack(target)
 		var result := CombatSystem.roll_attack(self, blocking_actor)
 		_log_attack_result(result, blocking_actor)
@@ -79,7 +94,7 @@ func revive(hp_fraction: float) -> void:
 	is_alive = true
 	modulate = Color.WHITE
 	statuses.clear()
-	body.modulate = Color.WHITE
+	_update_look()
 	status_changed.emit()
 	current_hp = maxi(1, int(stats.max_hp * hp_fraction))
 	_update_hp_bar()
@@ -112,7 +127,7 @@ func _check_pickup(pos: Vector2i) -> void:
 		AudioManager.play("gold")
 		MessageBus.log_message("저승길 동전 %d개를 주웠다." % gold)
 
-## Active status effects: name -> turns left ("poison", "stun").
+## Active status effects: name -> turns left (see STATUS_NAMES).
 var statuses: Dictionary = {}
 
 func has_status(status_name: String) -> bool:
@@ -120,18 +135,21 @@ func has_status(status_name: String) -> bool:
 
 func apply_status(status_name: String, turns: int) -> void:
 	statuses[status_name] = maxi(int(statuses.get(status_name, 0)), turns)
-	body.modulate = _rest_tint()
+	_update_look()
 	status_changed.emit()
 
 func cure_status(status_name: String) -> void:
 	if statuses.erase(status_name):
-		body.modulate = _rest_tint()
+		_update_look()
 		status_changed.emit()
 
-## Called once per player turn: poison hurts, then all timers count down.
+## Called once per player turn: poison hurts and regeneration heals, then all
+## timers count down.
 func tick_statuses() -> void:
 	if statuses.is_empty():
 		return
+	if statuses.has("regen") and current_hp < stats.max_hp:
+		heal(1, false)
 	if statuses.has("poison"):
 		var dmg: int = 1 + GameState.current_floor / 8
 		MessageBus.log_message("독이 온몸에 퍼져 %d의 피해를 입었다." % dmg)
@@ -141,8 +159,16 @@ func tick_statuses() -> void:
 		statuses[key] -= 1
 		if statuses[key] <= 0:
 			statuses.erase(key)
-	body.modulate = _rest_tint()
+			if STATUS_ENDS.has(key):
+				MessageBus.log_message(STATUS_ENDS[key])
+	_update_look()
 	status_changed.emit()
+
+## Attacking gives an invisible player away.
+func reveal() -> void:
+	if has_status("invisible"):
+		cure_status("invisible")
+		MessageBus.log_message("공격하는 순간 모습이 드러났다.")
 
 ## Called once per player turn, after tick_statuses().
 func tick_hunger() -> void:
@@ -175,20 +201,29 @@ static func hunger_stage(hunger: int) -> String:
 static func fullness(hunger: int) -> float:
 	return clampf(1.0 - float(hunger) / float(STARVING), 0.0, 1.0)
 
-## Timed conditions (poison, stun). Hunger has its own meter on the HUD.
+## Timed conditions and effects. Hunger has its own meter on the HUD.
 func status_text() -> String:
-	var names := {"poison": "독", "stun": "기절"}
 	var parts: Array[String] = []
 	for key in statuses.keys():
-		parts.append("%s %d" % [names.get(key, key), statuses[key]])
+		parts.append("%s %d" % [STATUS_NAMES.get(key, key), statuses[key]])
 	return " ".join(parts)
 
+## Tint for conditions, see-through while invisible, afloat while levitating.
+func _update_look() -> void:
+	body.modulate = _rest_tint()
+	set_lift(FLOAT_PX if has_status("levitate") else 0.0)
+
 func _rest_tint() -> Color:
+	var tint := Color.WHITE
 	if statuses.has("poison"):
-		return Color(0.6, 1.0, 0.6)
-	if statuses.has("stun"):
-		return Color(1.0, 1.0, 0.6)
-	return Color.WHITE
+		tint = Color(0.6, 1.0, 0.6)
+	elif statuses.has("stun"):
+		tint = Color(1.0, 1.0, 0.6)
+	elif statuses.has("chill"):
+		tint = Color(0.7, 0.85, 1.0)
+	if statuses.has("invisible"):
+		tint.a = 0.4
+	return tint
 
 ## Wells and altars are used up when triggered. A well is left alone if it
 ## would be wasted (full HP, no poison).

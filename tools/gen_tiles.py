@@ -41,6 +41,8 @@ DECOR = {
     "gate": [("bones", 1), ("skull", 1), ("crack", 1), ("chain", 1), ("ember", 2), ("lava", 2), ("candle", 2)],
     "palace": [("crack", 1), ("coins", 1), ("cushion", 1), ("scroll", 1), ("incense", 2), ("candle", 2)],
 }
+# Hazard zones (HazardSystem kinds); each has a two-frame overlay.
+HAZARDS = ["poison", "ice", "fire"]
 # Decor that gives off light (warms the tiles around it in the light map).
 LIGHTS = ["candle", "ember", "lava", "incense"]
 
@@ -415,6 +417,62 @@ def trap_spent(band):
     return img
 
 
+# ---------------------------------------------------------------- hazards
+
+def hazard(kind, frame):
+    """Overlays for the hazard zones (HazardSystem), the same in every band:
+    a poison marsh, a sheet of ice, a patch of fire. Two frames each."""
+    img = canvas(C, C)
+    noise = Noise(("hazard", kind), C, 6)
+    if kind == "poison":
+        for y in range(C):
+            for x in range(C):
+                t = noise.at(x, y)
+                put(img, x, y, shade((70, 140, 60), (t - 0.5) * 0.6), 150 + int(t * 60))
+        for i, (x, y) in enumerate(((5, 6), (15, 4), (10, 13), (18, 16), (6, 19))):
+            if (i + frame) % 2 == 0:
+                put(img, x, y, (190, 240, 140))
+                put(img, x + 1, y, (140, 210, 100))
+                put(img, x, y - 1, (220, 255, 180), 200)
+            else:
+                put(img, x, y, (120, 190, 90), 220)
+    elif kind == "ice":
+        for y in range(C):
+            for x in range(C):
+                t = noise.at(x, y)
+                put(img, x, y, shade((170, 214, 240), (t - 0.5) * 0.4), 120 + int(t * 50))
+        crack = rng_for("ice-crack")
+        x, y = 3, 5
+        for _ in range(14):
+            put(img, x, y, (236, 248, 255), 230)
+            x += crack.choice((1, 1, 0))
+            y += crack.choice((1, 0, 0, -1))
+            y = max(1, min(22, y))
+        for i, (x, y) in enumerate(((6, 16), (17, 8), (12, 20), (20, 18))):
+            if (i + frame) % 2 == 0:
+                put(img, x, y, (255, 255, 255))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    put(img, x + dx, y + dy, (220, 240, 255), 160)
+    else:  # fire
+        for y in range(C):
+            for x in range(C):
+                t = noise.at(x, y)
+                put(img, x, y, shade((70, 28, 20), (t - 0.5) * 0.5), 170)
+        for bx in (3, 9, 15, 20):
+            h = 5 + (bx * 7 + frame * 3) % 5
+            base_y = 20 - (bx % 3)
+            for dy in range(h):
+                sway = 1 if (dy + frame + bx) % 4 == 0 else 0
+                c = (255, 236, 150) if dy < 2 else ((255, 160, 50) if dy < h - 2 else (210, 70, 30))
+                put(img, bx + sway, base_y - dy, c)
+                if dy < h - 2:
+                    put(img, bx + sway + 1, base_y - dy, (230, 110, 40))
+        for x, y in ((6, 8), (13, 5), (18, 10)):
+            if (x + frame) % 2:
+                put(img, x, y, (255, 200, 90))
+    return img
+
+
 # ---------------------------------------------------------------- decor
 
 def decor(band, name, frame):
@@ -574,6 +632,9 @@ def band_cells(band):
     for f in range(2):
         cells.append(("altar_%d" % f, altar(band, f)))
     cells += [("trap_spotted", trap_spotted(band)), ("trap_spent", trap_spent(band))]
+    for kind in HAZARDS:
+        for f in range(2):
+            cells.append(("hazard_%s_%d" % (kind, f), hazard(kind, f)))
     return cells
 
 

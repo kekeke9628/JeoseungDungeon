@@ -232,9 +232,21 @@ func set_layers(frame_sets: Array) -> void:
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rect.use_parent_material = true
 		rect.flip_h = sprite.flip_h
+		rect.position.y = sprite.position.y  # floats with the body
 		rect.texture = frames[_frame_index % frames.size()]
 		body.add_child(rect)
 		_layers.append({"rect": rect, "frames": frames})
+
+## Raises the drawn character off the ground (levitation); its shadow stays
+## on the floor and shrinks.
+func set_lift(px: float) -> void:
+	sprite.position.y = -px
+	for layer in _layers:
+		layer.rect.position.y = -px
+	var k: float = 1.0 - clampf(px / 16.0, 0.0, 0.5)
+	shadow.scale = Vector2(k, k)
+	# scale about the oval's centre, not the node's corner
+	shadow.position = Vector2(Constants.TILE_SIZE * 0.5, Constants.TILE_SIZE * 0.9) * (1.0 - k)
 
 func layer_count() -> int:
 	return _layers.size()
@@ -304,12 +316,14 @@ func take_damage(amount: int) -> void:
 	if current_hp <= 0:
 		die()
 
-func heal(amount: int) -> void:
+## show: float a "+N" (off for a steady trickle like a regeneration effect).
+func heal(amount: int, show: bool = true) -> void:
 	if not is_alive:
 		return
 	current_hp = min(stats.max_hp, current_hp + amount)
 	_update_hp_bar()
-	_show_popup("+%d" % amount, COLOR_HEAL)
+	if show:
+		_show_popup("+%d" % amount, COLOR_HEAL)
 	if amount >= HEAL_FX_MIN:
 		Fx.heal(self)
 	hp_changed.emit(current_hp, stats.max_hp)

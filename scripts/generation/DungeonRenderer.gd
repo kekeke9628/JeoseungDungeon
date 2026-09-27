@@ -133,6 +133,9 @@ func _draw_tile(atlas: Texture2D, pos: Vector2i, rect: Rect2) -> void:
 	var decor: String = decor_at(pos)
 	if decor != "":
 		_blit(atlas, "decor_%s_%d" % [decor, _frame % _decor_frames(decor)], rect)
+	var hazard: String = DungeonState.hazards.get(pos, "")
+	if hazard != "":
+		_blit(atlas, "hazard_%s_%d" % [hazard, _frame], rect)
 	_draw_contact_shadow(pos, rect)
 
 ## A wall shows its brick face where open floor lies below it, and its top

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "buyu_talisman"
+item_type = 3
+identified_name = "부유 부적"
+unidentified_name = "가벼운 부적"
+description = "손에서 자꾸 떠오르려는 부적."
+identified_description = "부유 부적. 읽으면 25턴 동안 몸이 떠올라 함정과 독 늪·얼음·불길을 밟지 않는다."
+stackable = true
+is_cursed = false
+min_floor = 2
+value_a = 25
+value_b = 0
+gold_value = 30
+loot_weight = 5

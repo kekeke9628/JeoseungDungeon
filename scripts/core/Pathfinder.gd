@@ -6,8 +6,8 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), 
 ## Returns the tile path from `from` to `to` inclusive, or [] if unreachable.
 ## Only explored, walkable tiles are used; tiles held by other actors block
 ## the route unless they are the destination (so tapping a monster walks up
-## to it and attacks). Traps the player has spotted are routed around when
-## there is any way around them.
+## to it and attacks). Traps the player has spotted, and hazard zones, are
+## routed around when there is any way around them.
 static func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var safe: Array[Vector2i] = _search(from, to, true)
 	if not safe.is_empty():
@@ -34,7 +34,8 @@ static func _search(from: Vector2i, to: Vector2i, avoid_traps: bool) -> Array[Ve
 				continue
 			if n != to and DungeonState.get_actor_at(n) != null:
 				continue
-			if avoid_traps and n != to and DungeonState.spotted_traps.has(n):
+			var danger: bool = DungeonState.spotted_traps.has(n) or DungeonState.hazards.has(n)
+			if avoid_traps and n != to and danger:
 				continue
 			prev[n] = cur
 			queue.append(n)

@@ -22,6 +22,8 @@ static func trigger(actor: Actor, pos: Vector2i) -> bool:
 	if DungeonState.tile_at(pos) != DungeonState.Tile.TRAP:
 		return false
 	var is_player: bool = actor.is_player_actor()
+	if is_player and actor.has_status("levitate"):
+		return false  # floats over it; the trap stays armed
 	var seen: bool = is_player or DungeonState.visible_tiles.has(pos)
 	DungeonState.set_tile(pos, DungeonState.Tile.TRAP_SPENT)
 	DungeonState.spotted_traps.erase(pos)

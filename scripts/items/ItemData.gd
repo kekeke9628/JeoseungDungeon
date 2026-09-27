@@ -32,6 +32,9 @@ const EQUIP_SLOT_OF := {
 ## Equipment: max HP while worn.
 @export var bonus_hp: int = 0
 @export var gold_value: int = 10
+## How often this turns up as floor loot, against other items of its kind
+## (gear, or everything else). 10 is ordinary; rarer things are lower.
+@export var loot_weight: int = 10
 
 ## The slot this item is worn in, or "" if it is not equipment.
 func equip_slot() -> String:

@@ -25,6 +25,7 @@ var gold_at: Dictionary = {}       # Vector2i -> int
 var explored: Dictionary = {}      # Vector2i -> true, ever seen this floor
 var visible_tiles: Dictionary = {} # Vector2i -> true, currently in sight
 var spotted_traps: Dictionary = {} # Vector2i -> true, armed traps the player has noticed
+var hazards: Dictionary = {}       # Vector2i -> HazardSystem kind ("poison", "ice", "fire")
 ## Where the last field of view was cast from (the player's tile).
 var fov_origin: Vector2i = Vector2i.ZERO
 
@@ -36,6 +37,7 @@ func clear() -> void:
 	explored.clear()
 	visible_tiles.clear()
 	spotted_traps.clear()
+	hazards.clear()
 	width = 0
 	height = 0
 
@@ -110,6 +112,16 @@ func take_gold_at(pos: Vector2i) -> int:
 		changed.emit()
 		return g
 	return 0
+
+## Every tile of the floor in sight at once (the sight potion), still cast
+## from origin so the light falls off around the player.
+func see_all(origin: Vector2i) -> void:
+	fov_origin = origin
+	visible_tiles.clear()
+	for pos in grid.keys():
+		visible_tiles[pos] = true
+		explored[pos] = true
+	changed.emit()
 
 ## Picks a random unoccupied plain floor tile, or Vector2i(-1, -1) if none.
 func random_free_floor_tile() -> Vector2i:

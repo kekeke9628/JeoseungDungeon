@@ -3,6 +3,20 @@ class_name ItemEffects
 ## a turn (and the item, if consumable); false when nothing happened.
 
 const TALISMAN_RANGE: int = 6
+## Potions and talismans that give a timed effect, after Shattered Pixel
+## Dungeon's healing, haste, mind vision, invisibility and levitation:
+## item id -> status. How long it lasts, in turns, is the item's value_a.
+const TIMED := {
+	"hoechuntang": "regen", "jilpungju": "haste", "simantang": "sight",
+	"eunsin_talisman": "invisible", "buyu_talisman": "levitate",
+}
+const TIMED_MESSAGES := {
+	"regen": "온몸에 따뜻한 기운이 돈다. 한동안 체력이 조금씩 차오른다.",
+	"haste": "몸이 바람처럼 가벼워졌다!",
+	"sight": "눈이 트였다! 이 층의 모든 것이 보인다.",
+	"invisible": "몸이 흐려져 보이지 않게 되었다.",
+	"levitate": "몸이 둥실 떠올랐다.",
+}
 
 static func use_item(item: ItemData, player: Player) -> bool:
 	var used: bool = false
@@ -10,6 +24,11 @@ static func use_item(item: ItemData, player: Player) -> bool:
 	if item.is_equipment():
 		used = _equip(item, player)
 		sfx = "equip"
+	elif TIMED.has(item.id):
+		used = _grant(item, player)
+		sfx = "potion" if item.item_type == ItemData.ItemType.POTION else "scroll"
+		AudioManager.play(sfx)
+		return used
 	match item.item_type:
 		ItemData.ItemType.POTION:
 			used = _drink(item, player)
@@ -37,6 +56,16 @@ static func _drink(item: ItemData, player: Player) -> bool:
 	MessageBus.log_message("%s 마셨다. 체력이 %d 회복됐다." % [Josa.eul_reul(item.identified_name), item.value_a])
 	return true
 
+## A timed effect for value_a turns (it refreshes rather than stacks).
+static func _grant(item: ItemData, player: Player) -> bool:
+	GameState.identify(item.id)
+	GameState.remove_item(item)
+	var status: String = TIMED[item.id]
+	player.apply_status(status, item.value_a)
+	MessageBus.log_message("%s %s" % [TIMED_MESSAGES[status], "(%d턴)" % item.value_a])
+	Fx.buff(player, status)
+	return true
+
 ## Food takes away value_a turns of hunger. Nothing is eaten on a full stomach.
 static func _eat(item: ItemData, player: Player) -> bool:
 	if GameState.hunger <= 0:
@@ -58,6 +87,7 @@ static func _read(item: ItemData, player: Player) -> bool:
 				return false
 			GameState.identify(item.id)
 			GameState.remove_item(item)
+			player.reveal()
 			MessageBus.log_message("부적이 타오르며 %s에게 %d의 피해를 입혔다!" % [target.display_name, item.value_a])
 			Fx.flame(target)
 			target.set_hit_from(player.grid_pos)

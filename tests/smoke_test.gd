@@ -94,10 +94,12 @@ func _run() -> void:
 	await _test_hunger()
 	await _test_graphics()
 	await _test_hit_feel()
+	await _test_hazards()
+	await _test_timed_effects()
 
 func _test_content() -> void:
 	print("[content]")
-	check(ItemDatabase.items.size() == 32, "32 items loaded (got %d)" % ItemDatabase.items.size())
+	check(ItemDatabase.items.size() == 37, "37 items loaded (got %d)" % ItemDatabase.items.size())
 	for slot in GameState.EQUIP_SLOTS:
 		var any_for_slot: bool = ItemDatabase.items.values().any(func(it): return it.equip_slot() == slot)
 		check(any_for_slot, "some item fits the %s slot" % slot)
@@ -1381,3 +1383,155 @@ func _test_hit_feel() -> void:
 	seed(99)
 	Fx.shake(Fx.SHAKE_HEAVY)
 	check(randi() == expected, "the camera shake does not use the game's dice")
+
+## A 7x1 corridor with the player at x=1, for hazard and effect tests.
+func _corridor(class_id: String) -> Player:
+	await _new_game(class_id)
+	_clear_monsters()
+	DungeonState.clear()
+	for x in range(7):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(1, 0))
+	game._refresh_vision()
+	return game.player
+
+func _test_hazards() -> void:
+	print("[hazard zones]")
+	await _new_game("mudang")
+	var zoned: int = 0
+	var clean: bool = true
+	for f in range(2, 8):
+		game._load_floor(f)
+		if not DungeonState.hazards.is_empty():
+			zoned += 1
+		for pos in DungeonState.hazards.keys():
+			if DungeonState.tile_at(pos) != DungeonState.Tile.FLOOR or pos == game.player.grid_pos:
+				clean = false
+	check(zoned >= 5, "floors from 2 on get hazard zones (%d of 6)" % zoned)
+	check(clean, "zones lie only on plain floor, never under the player's start")
+	var kinds: Dictionary = {}
+	for pos in DungeonState.hazards.keys():
+		kinds[DungeonState.hazards[pos]] = true
+	var saved: Dictionary = DungeonState.hazards.duplicate()
+	SaveManager.save_run(game.player)
+	await _new_game("mudang", true)
+	check(DungeonState.hazards == saved and not saved.is_empty(), "zones survive save and continue")
+
+	var p: Player = await _corridor("hwarang")
+	_god_mode()
+	DungeonState.hazards[Vector2i(2, 0)] = HazardSystem.POISON
+	var lines: Array[String] = []
+	var log_line := func(text): lines.append(text)
+	MessageBus.message_logged.connect(log_line)
+	game._on_direction_pressed(Vector2i(1, 0))
+	check(p.has_status("poison"), "a poison marsh poisons whoever stands in it")
+	check(lines.any(func(l): return l.contains("늪")), "stepping in is announced")
+	MessageBus.message_logged.disconnect(log_line)
+	p.cure_status("poison")
+	DungeonState.hazards.clear()
+	DungeonState.hazards[Vector2i(3, 0)] = HazardSystem.ICE
+	game._on_direction_pressed(Vector2i(1, 0))
+	check(p.has_status("chill"), "ice chills")
+	var dog_data: MonsterData = MonsterDatabase.get_monster("jeoseung_dog")
+	var dog: Monster = game._spawn_monster_at(dog_data, Vector2i(6, 0))
+	game._refresh_vision()
+	var turns: int = GameState.turn_count
+	game._on_wait_pressed()
+	check(dog.grid_pos == Vector2i(4, 0), "while chilled the world moves twice (%s)" % dog.grid_pos)
+	check(GameState.turn_count == turns + 1, "but only one turn of the player's passes")
+	TurnManager.monsters.erase(dog)  # out of the way of the next checks
+	DungeonState.clear_actor_at(dog.grid_pos)
+	DungeonState.hazards.clear()
+	p.statuses.clear()
+	DungeonState.hazards[Vector2i(2, 0)] = HazardSystem.FIRE
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(2, 0))
+	var hp: int = p.current_hp
+	game._on_wait_pressed()
+	check(p.current_hp < hp and GameState.last_attacker == "불길", "fire burns")
+	p.apply_status("levitate", 5)
+	hp = p.current_hp
+	game._on_wait_pressed()
+	check(p.current_hp >= hp, "a floating player is not burnt")
+	DungeonState.hazards[dog.grid_pos] = HazardSystem.FIRE
+	var dog_hp: int = dog.current_hp
+	HazardSystem.affect(dog)
+	check(dog.current_hp < dog_hp, "monsters burn too")
+	DungeonState.hazards.clear()
+	DungeonState.hazards[Vector2i(1, 0)] = HazardSystem.FIRE
+	var route: Array[Vector2i] = Pathfinder.find_path(p.grid_pos, Vector2i(0, 0))
+	check(route.size() == 3, "a hazard in a corridor with no way round is still walkable")
+
+func _test_timed_effects() -> void:
+	print("[timed effects]")
+	var p: Player = await _corridor("mudang")
+	var regen: ItemData = ItemDatabase.get_item("hoechuntang")
+	GameState.add_item(regen)
+	p.current_hp = 5
+	game._on_item_chosen(regen)
+	var lasting: bool = p.has_status("regen") and p.statuses["regen"] <= regen.value_a
+	check(lasting, "the regen brew lasts its turns")
+	var hp: int = p.current_hp
+	game._on_wait_pressed()
+	check(p.current_hp >= hp + 1, "and heals a point every turn")
+	check(game.hud.summary().contains("회춘"), "the HUD lists the effect")
+	var haste: ItemData = ItemDatabase.get_item("jilpungju")
+	GameState.add_item(haste)
+	game._on_item_chosen(haste)
+	var dog_data: MonsterData = MonsterDatabase.get_monster("jeoseung_dog")
+	var dog: Monster = game._spawn_monster_at(dog_data, Vector2i(6, 0))
+	game._refresh_vision()
+	var turns: int = GameState.turn_count
+	game._on_wait_pressed()
+	game._on_wait_pressed()
+	check(GameState.turn_count == turns + 1, "haste: two actions take one turn")
+	check(dog.grid_pos == Vector2i(5, 0), "and the monster moved only once (%s)" % dog.grid_pos)
+	TurnManager.monsters.clear()
+	DungeonState.clear_actor_at(dog.grid_pos)
+	dog.queue_free()
+	p.statuses.clear()
+	var sight: ItemData = ItemDatabase.get_item("simantang")
+	GameState.add_item(sight)
+	game._load_floor(3)
+	_clear_monsters()
+	var before: int = DungeonState.visible_tiles.size()
+	game._on_item_chosen(sight)
+	check(DungeonState.visible_tiles.size() == DungeonState.grid.size(), "sight shows the whole floor")
+	check(DungeonState.visible_tiles.size() > before, "far more than normal sight")
+	p = await _corridor("mudang")
+	var archer_data: MonsterData = MonsterDatabase.get_monster("mulgwisin")
+	var archer: Monster = game._spawn_monster_at(archer_data, Vector2i(4, 0))
+	archer.data = archer.data.duplicate()
+	archer.data.ai_type = MonsterData.AIType.RANGED
+	game._refresh_vision()
+	var hide: ItemData = ItemDatabase.get_item("eunsin_talisman")
+	GameState.add_item(hide)
+	game._on_item_chosen(hide)
+	archer.move_to_grid(Vector2i(4, 0))
+	DungeonState.actors_at.erase(archer.grid_pos)
+	DungeonState.clear_actor_at(Vector2i(3, 0))
+	DungeonState.clear_actor_at(Vector2i(5, 0))
+	DungeonState.set_actor_at(Vector2i(4, 0), archer)
+	hp = p.current_hp
+	archer.take_ai_turn()
+	check(p.current_hp == hp, "an unseen player is not shot at from afar")
+	check(p.body.modulate.a < 1.0, "the invisible player is drawn see-through")
+	DungeonState.move_actor(archer, archer.grid_pos, p.grid_pos + Vector2i(1, 0))
+	p.try_move(Vector2i(1, 0))
+	check(not p.has_status("invisible"), "attacking gives the player away")
+	var float_charm: ItemData = ItemDatabase.get_item("buyu_talisman")
+	GameState.add_item(float_charm)
+	game._on_item_chosen(float_charm)
+	check(p.sprite.position.y < 0.0, "levitation lifts the character off the ground")
+	DungeonState.grid[Vector2i(0, 0)] = DungeonState.Tile.TRAP
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(0, 0))
+	check(not TrapSystem.trigger(p, Vector2i(0, 0)), "a floating player does not spring traps")
+	check(DungeonState.tile_at(Vector2i(0, 0)) == DungeonState.Tile.TRAP, "and the trap stays armed")
+	p.statuses["levitate"] = 1
+	var ended: Array[String] = []
+	var log_line := func(text): ended.append(text)
+	MessageBus.message_logged.connect(log_line)
+	game._on_wait_pressed()
+	var landed: bool = not p.has_status("levitate") and p.sprite.position.y == 0.0
+	check(landed, "it wears off and the player lands")
+	check(ended.any(func(l): return l.contains("내려앉았다")), "wearing off is announced")
+	MessageBus.message_logged.disconnect(log_line)

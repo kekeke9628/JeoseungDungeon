@@ -23,6 +23,8 @@ const ATTACK_SCALE: float = 1.12
 
 var data: MonsterData
 var _summoned: bool = false
+## Standing on ice: this monster loses its next turn.
+var _chilled: bool = false
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
@@ -37,8 +39,16 @@ func take_ai_turn() -> void:
 	var player_actor = TurnManager.player
 	if player_actor == null or not player_actor.is_alive:
 		return
+	if _chilled:
+		_chilled = false
+		return
 	var dist: int = _chebyshev_distance(grid_pos, player_actor.grid_pos)
 	var beside: bool = _is_beside(player_actor.grid_pos)
+	# An invisible player is only noticed by what bumps right into them.
+	if player_actor.has_status("invisible") and not beside:
+		if data.ai_type != MonsterData.AIType.AMBUSH:
+			_move_random()
+		return
 	match data.ai_type:
 		MonsterData.AIType.WANDER:
 			if beside:
@@ -62,6 +72,10 @@ func take_ai_turn() -> void:
 				_attack(player_actor)
 			elif dist <= data.detect_radius:
 				_move_toward(player_actor.grid_pos)
+
+## Ice under a monster costs it its next turn.
+func chill() -> void:
+	_chilled = true
 
 ## Bosses smash floor traps instead of falling into them, so a boss fight is
 ## never cut short by a teleport trap.
