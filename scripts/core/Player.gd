@@ -51,6 +51,7 @@ func is_player_actor() -> bool:
 
 ## The player node is kept alive on death so a revive token can bring it back.
 func die() -> void:
+	Fx.soul(self)
 	is_alive = false
 	modulate = Color(1, 1, 1, 0.45)
 	died.emit(self)
@@ -82,11 +83,13 @@ func pick_up_here() -> void:
 func _check_pickup(pos: Vector2i) -> void:
 	var item: ItemData = DungeonState.take_item_at(pos)
 	if item:
+		Fx.sparkle(get_parent(), pos)
 		GameState.add_item(item)
 		AudioManager.play("pickup")
 		MessageBus.log_message("%s 주웠다." % Josa.eul_reul(item.get_display_name(GameState.is_identified(item.id))))
 	var gold: int = DungeonState.take_gold_at(pos)
 	if gold > 0:
+		Fx.sparkle(get_parent(), pos)
 		GameState.add_gold(gold)
 		AudioManager.play("gold")
 		MessageBus.log_message("저승길 동전 %d개를 주웠다." % gold)

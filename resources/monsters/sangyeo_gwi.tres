@@ -23,6 +23,7 @@ xp_reward = 16
 min_floor = 5
 max_floor = 7
 color = Color(0.55, 0.45, 0.35, 1)
+hit_color = Color(0.7, 0.66, 0.6, 1)
 glyph = "상"
 is_boss = false
 loot_item_ids = Array[String](["hemp_garment", "soul_armor", "ledger_fragment"])

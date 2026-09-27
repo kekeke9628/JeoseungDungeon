@@ -588,6 +588,7 @@ func _on_leveled_up(new_level: int) -> void:
 	if new_level % 2 == 0:
 		player.stats.attack_min += 1
 	player.heal(HP_PER_LEVEL)
+	Fx.level_up(player)
 	MessageBus.log_message("레벨 %d 달성! 몸에 힘이 차오른다." % new_level)
 	AudioManager.play("levelup")
 

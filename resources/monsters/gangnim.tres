@@ -23,6 +23,7 @@ xp_reward = 150
 min_floor = 10
 max_floor = 10
 color = Color(0.15, 0.15, 0.55, 1)
+hit_color = Color(0.6, 0.55, 0.85, 1)
 glyph = "강"
 is_boss = true
 loot_item_ids = Array[String](["elixir"])

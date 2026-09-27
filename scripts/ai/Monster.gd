@@ -95,8 +95,12 @@ func die() -> void:
 		GameState.game_over.emit(true)
 	elif data.is_boss:
 		MessageBus.log_message("%s 쓰러뜨렸다. 저승 더 깊은 곳으로 길이 열렸다." % Josa.eul_reul(display_name))
+	Fx.soul(self)
 	_spawn_death_fx()
 	super.die()
+
+func hit_color() -> Color:
+	return data.hit_color if data != null else super.hit_color()
 
 func _attack(target) -> void:
 	play_attack(target.grid_pos)

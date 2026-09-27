@@ -23,6 +23,7 @@ xp_reward = 20
 min_floor = 7
 max_floor = 10
 color = Color(0.95, 0.95, 1.0, 1)
+hit_color = Color(0.8, 0.85, 1, 1)
 glyph = "녀"
 is_boss = false
 loot_item_ids = Array[String](["elixir", "clairvoyance_talisman"])
