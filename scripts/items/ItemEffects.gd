@@ -60,6 +60,7 @@ static func _read(item: ItemData, player: Player) -> bool:
 			GameState.remove_item(item)
 			MessageBus.log_message("부적이 타오르며 %s에게 %d의 피해를 입혔다!" % [target.display_name, item.value_a])
 			Fx.flame(target)
+			target.set_hit_from(player.grid_pos)
 			target.take_damage(item.value_a)
 			return true
 		"teleport_talisman":

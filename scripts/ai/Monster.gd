@@ -104,8 +104,12 @@ func hit_color() -> Color:
 
 func _attack(target) -> void:
 	play_attack(target.grid_pos)
+	target.set_hit_from(grid_pos)
 	var result := CombatSystem.resolve_attack(self, target)
 	AudioManager.play("hurt" if result.hit else "miss")
+	if not result.hit:
+		target.set_hit_from(Actor.NO_HIT)
+		target.dodge(grid_pos)
 	if result.hit:
 		MessageBus.log_message("%s %d의 피해를 입혔다!" % [Josa.i_ga(display_name), result.damage])
 		if target is Player:

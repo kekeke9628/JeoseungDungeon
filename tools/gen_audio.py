@@ -92,6 +92,19 @@ def build_sfx():
     save("victory", notes([523, 659, 784, 1047, 784, 1047, 1319], 0.14, vol=0.7))
     save("defeat", notes([392, 349, 311, 262], 0.25, vol=0.7))
     save("eat", eat_sfx())
+    save("hit_heavy", heavy_hit_sfx())
+
+
+def heavy_hit_sfx():
+    """A heavy blow: a low thump that drops in pitch under a short crunch.
+    Own RNG, so adding it left the other sounds unchanged."""
+    rng = np.random.default_rng(23)
+    dur = 0.28
+    n = int(SR * dur)
+    thump = sweep(150, 45, dur, 1.0) * env(n, attack=0.002, decay=14)
+    crunch = lowpass(rng.uniform(-1, 1, n), 4) * env(n, attack=0.001, decay=38) * 0.8
+    click = sine(1800, dur, 0.25) * env(n, decay=120)
+    return thump + crunch + click
 
 
 def eat_sfx():

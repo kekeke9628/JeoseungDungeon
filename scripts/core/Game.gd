@@ -21,8 +21,10 @@ const FOOD_WEIGHTS := {"gotgam": 40, "jumeokbap": 45, "sajatbap": 15}
 const HP_PER_LEVEL: int = 9
 const SUPPORTER_GLOW := Color(1.0, 0.85, 0.3, 0.3)
 const REVIVE_HP_FRACTION: float = 0.5
-const SHAKE_STRENGTH: float = 8.0
-const SHAKE_TIME: float = 0.18
+## Camera shake when the player is hurt: this much for a scratch, up to
+## SHAKE_MAX for a blow that takes a big share of their health.
+const SHAKE_MIN: float = 5.0
+const SHAKE_MAX: float = 14.0
 const CAMERA_BASE_OFFSET := Vector2(0, 110)
 const WALK_STEP_DELAY: float = 0.08
 const FADE_TIME: float = 0.4
@@ -150,6 +152,8 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	player.add_child(camera)
 	camera.position = Vector2(Constants.TILE_SIZE / 2.0, Constants.TILE_SIZE / 2.0)
 	camera.make_current()
+	Fx.camera = camera
+	Fx.camera_rest = CAMERA_BASE_OFFSET
 
 	if not save_data.is_empty():
 		SaveManager.apply(save_data, player)
@@ -579,13 +583,12 @@ func _update_skill_button() -> void:
 	if c:
 		dpad.set_skill(c.skill_name, GameState.skill_cooldown_left, c.skill_id)
 
-func _on_player_hp_changed(current: int, _max_hp: int) -> void:
-	if current < _last_hp and is_instance_valid(camera):
-		var tw := camera.create_tween()
-		for i in range(3):
-			var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * SHAKE_STRENGTH
-			tw.tween_property(camera, "offset", CAMERA_BASE_OFFSET + jitter, SHAKE_TIME / 4.0)
-		tw.tween_property(camera, "offset", CAMERA_BASE_OFFSET, SHAKE_TIME / 4.0)
+## The harder the hit, the harder the camera shakes. The shake has its own
+## random numbers (Fx), so it never moves the game's dice.
+func _on_player_hp_changed(current: int, max_hp: int) -> void:
+	if current < _last_hp:
+		var share: float = float(_last_hp - current) / float(maxi(1, max_hp))
+		Fx.shake(lerpf(SHAKE_MIN, SHAKE_MAX, clampf(share * 3.0, 0.0, 1.0)))
 	_last_hp = current
 
 func _on_leveled_up(new_level: int) -> void:

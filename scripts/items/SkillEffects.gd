@@ -40,6 +40,7 @@ static func _ilseom(player: Player) -> bool:
 	MessageBus.log_message("일섬! %s에게 %d의 피해를 입혔다." % [target.display_name, dmg])
 	Fx.slash(target)
 	Fx.screen_flash(player, Color(1, 1, 1, 0.22), 0.15)
+	target.set_hit_from(player.grid_pos)
 	target.take_damage(dmg)
 	return true
 
@@ -52,11 +53,13 @@ static func _noejeon(player: Player) -> bool:
 		var dist: int = maxi(absi(m.grid_pos.x - player.grid_pos.x), absi(m.grid_pos.y - player.grid_pos.y))
 		if dist <= LIGHTNING_RANGE and DungeonState.has_line_of_sight(player.grid_pos, m.grid_pos):
 			Fx.lightning(m)
+			m.set_hit_from(m.grid_pos + Vector2i.UP)  # struck from the sky
 			m.take_damage(dmg)
 			hit += 1
 	if hit == 0:
 		MessageBus.log_message("뇌전을 내릴 적이 시야에 없다.")
 		return false
 	Fx.screen_flash(player, Color(0.7, 0.8, 1.0, 0.45), 0.3)
+	Fx.shake(Fx.SHAKE_HEAVY)
 	MessageBus.log_message("뇌전이 내리쳐 %d마리에게 %d의 피해를 입혔다!" % [hit, dmg])
 	return true

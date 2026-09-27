@@ -1,8 +1,9 @@
 class_name Fx
 ## Visual effects for things that happen in play: hits, deaths, healing,
-## pickups, level-ups, skills and traps. Every function only adds short-lived
-## nodes that free themselves; none of them changes the game or uses its RNG.
-## Effects for an actor the player cannot see are skipped.
+## pickups, level-ups, skills and traps, plus the hit feel (freeze frames,
+## camera shake). Every function only adds short-lived nodes or nudges the
+## picture; none of them changes the game or uses its RNG. Effects for an
+## actor the player cannot see are skipped.
 
 ## Above the light overlay (5), so effects glow in the dark; below damage numbers (10).
 const Z: int = 8
@@ -14,6 +15,25 @@ const DUST := Color(0.75, 0.7, 0.65)
 const FLAME := Color(1.0, 0.55, 0.2)
 ## The shaman's five colours, for salpuri.
 const OBANG: Array[Color] = [Color(0.85, 0.2, 0.2), Color(0.95, 0.8, 0.25), Color(0.25, 0.45, 0.9)]
+## Freeze frames: the picture slows almost to a stop for this long when a blow
+## lands (longer for a heavy one), which is most of what makes a hit feel solid.
+const HIT_STOP: float = 0.05
+const HIT_STOP_HEAVY: float = 0.1
+const HIT_STOP_SCALE: float = 0.05
+## Camera shake strengths, in screen px.
+const SHAKE_LIGHT: float = 5.0
+const SHAKE_HEAVY: float = 11.0
+const SHAKE_TIME: float = 0.22
+
+## Off in headless test runs, where frames only pass when a test waits and a
+## slowed clock would only slow the tests.
+static var hit_stop_enabled: bool = true
+## Set by Game: the camera to shake and its resting offset.
+static var camera: Camera2D
+static var camera_rest := Vector2.ZERO
+static var _stop_until_ms: int = 0
+static var _shake_tween: Tween
+static var _rng := RandomNumberGenerator.new()
 
 static func _center(actor: Node2D) -> Vector2:
 	var ts: float = Constants.TILE_SIZE
@@ -53,10 +73,51 @@ static func shape(parent: Node, at: Vector2, kind: FxShape.Kind, color: Color, t
 	return s
 
 ## A spray in the actor's own colour (blood, soul-stuff, sparks) when it is hurt.
-static func hit(actor) -> void:
+static func hit(actor, heavy: bool = false) -> void:
 	if not _shown(actor):
 		return
-	burst(actor.get_parent(), _center(actor), actor.hit_color(), 9, 150.0, 320.0, 0.4, 1)
+	var count: int = 18 if heavy else 10
+	var speed: float = 190.0 if heavy else 150.0
+	burst(actor.get_parent(), _center(actor), actor.hit_color(), count, speed, 320.0, 0.45, 1)
+
+## A white star where a blow lands, on the side facing the attacker.
+static func impact(target, from_tile: Vector2i) -> void:
+	if not _shown(target):
+		return
+	var toward := Vector2(from_tile - target.grid_pos).normalized()
+	var at: Vector2 = _center(target) + toward * Constants.TILE_SIZE * 0.3
+	shape(target.get_parent(), at, FxShape.Kind.SPARK, Color(1.0, 0.98, 0.85), 0.12, 20.0, 3.0)
+
+## Freezes the picture for a moment. Only the clock of animations slows; the
+## game has already moved on, so nothing waits for this.
+static func hit_stop(from: Node, seconds: float) -> void:
+	if not hit_stop_enabled or from == null or not from.is_inside_tree():
+		return
+	var until: int = Time.get_ticks_msec() + int(seconds * 1000.0)
+	if until <= _stop_until_ms:
+		return
+	_stop_until_ms = until
+	Engine.time_scale = HIT_STOP_SCALE
+	var timer := from.get_tree().create_timer(seconds, true, false, true)
+	timer.timeout.connect(_end_hit_stop)
+
+static func _end_hit_stop() -> void:
+	if Time.get_ticks_msec() >= _stop_until_ms - 2:
+		Engine.time_scale = 1.0
+
+## Shakes the camera; a stronger shake replaces a weaker one in progress.
+static func shake(strength: float) -> void:
+	if not is_instance_valid(camera) or not camera.is_inside_tree():
+		return
+	if _shake_tween != null and _shake_tween.is_valid():
+		_shake_tween.kill()
+	_shake_tween = camera.create_tween()
+	var steps: int = 4
+	for i in range(steps):
+		var k: float = strength * (1.0 - float(i) / steps)
+		var jolt := Vector2(_rng.randf_range(-1.0, 1.0), _rng.randf_range(-1.0, 1.0)) * k
+		_shake_tween.tween_property(camera, "offset", camera_rest + jolt, SHAKE_TIME / (steps + 1))
+	_shake_tween.tween_property(camera, "offset", camera_rest, SHAKE_TIME / (steps + 1))
 
 ## Wisps rising from something that has just died.
 static func soul(actor) -> void:

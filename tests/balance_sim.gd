@@ -13,6 +13,7 @@ var game: Node2D
 func _ready() -> void:
 	SettingsManager.settings_path = "user://test_settings.cfg"
 	SettingsManager.tutorial_seen = true
+	Fx.hit_stop_enabled = false  # frames only pass when a test waits
 	SaveManager.save_path = "user://sim_save.json"
 	IAPManager.store_path = "user://sim_purchases.json"
 	IAPManager.reset_for_tests()
