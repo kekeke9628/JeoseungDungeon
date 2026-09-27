@@ -27,6 +27,9 @@ const DEATH_TIME: float = 0.4
 ## Idle animation: seconds per frame (each actor a little different).
 const IDLE_FRAME_TIME: float = 0.5
 const SHADOW_COLOR := Color(0, 0, 0, 0.32)
+## Heals smaller than this (natural regeneration) get no sparkle.
+const HEAL_FX_MIN: int = 5
+const BLOOD := Color(0.72, 0.1, 0.14)
 
 var stats: ActorStats
 var current_hp: int = 1
@@ -200,6 +203,7 @@ func take_damage(amount: int) -> void:
 	_show_popup(str(amount), COLOR_DAMAGE_PLAYER if self is Player else COLOR_DAMAGE_MONSTER)
 	_flash()
 	_shake()
+	Fx.hit(self)
 	hp_changed.emit(current_hp, stats.max_hp)
 	if current_hp <= 0:
 		die()
@@ -210,6 +214,8 @@ func heal(amount: int) -> void:
 	current_hp = min(stats.max_hp, current_hp + amount)
 	_update_hp_bar()
 	_show_popup("+%d" % amount, COLOR_HEAL)
+	if amount >= HEAL_FX_MIN:
+		Fx.heal(self)
 	hp_changed.emit(current_hp, stats.max_hp)
 
 ## Raises or lowers max HP and moves current HP by the same amount (never below
@@ -258,6 +264,10 @@ func _flash() -> void:
 	sprite.modulate = Color(1.0, 0.4, 0.4)
 	var tw := create_tween()
 	tw.tween_property(sprite, "modulate", _rest_tint(), FLASH_TIME)
+
+## What sprays out when this actor is hurt (Monster reads it from its data).
+func hit_color() -> Color:
+	return BLOOD
 
 ## Sprite color when not flashing; subclasses override (e.g. status tints).
 func _rest_tint() -> Color:

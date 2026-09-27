@@ -23,6 +23,7 @@ xp_reward = 24
 min_floor = 8
 max_floor = 11
 color = Color(0.9, 0.88, 0.75, 1)
+hit_color = Color(0.9, 0.88, 0.75, 1)
 glyph = "달"
 is_boss = false
 loot_item_ids = Array[String](["flower_wine", "immortal_wine"])

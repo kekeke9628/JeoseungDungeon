@@ -20,6 +20,7 @@ static func use(skill_id: String, player: Player) -> bool:
 
 static func _salpuri(player: Player) -> bool:
 	var amount: int = int(player.stats.max_hp * HEAL_FRACTION)
+	Fx.salpuri(player)
 	player.heal(amount)
 	MessageBus.log_message("살풀이 한 판! 체력이 %d 회복됐다." % amount)
 	return true
@@ -37,6 +38,8 @@ static func _ilseom(player: Player) -> bool:
 		return false
 	var dmg: int = randi_range(player.stats.attack_min, player.stats.attack_max) * SLASH_MULTIPLIER
 	MessageBus.log_message("일섬! %s에게 %d의 피해를 입혔다." % [target.display_name, dmg])
+	Fx.slash(target)
+	Fx.screen_flash(player, Color(1, 1, 1, 0.22), 0.15)
 	target.take_damage(dmg)
 	return true
 
@@ -48,10 +51,12 @@ static func _noejeon(player: Player) -> bool:
 			continue
 		var dist: int = maxi(absi(m.grid_pos.x - player.grid_pos.x), absi(m.grid_pos.y - player.grid_pos.y))
 		if dist <= LIGHTNING_RANGE and DungeonState.has_line_of_sight(player.grid_pos, m.grid_pos):
+			Fx.lightning(m)
 			m.take_damage(dmg)
 			hit += 1
 	if hit == 0:
 		MessageBus.log_message("뇌전을 내릴 적이 시야에 없다.")
 		return false
+	Fx.screen_flash(player, Color(0.7, 0.8, 1.0, 0.45), 0.3)
 	MessageBus.log_message("뇌전이 내리쳐 %d마리에게 %d의 피해를 입혔다!" % [hit, dmg])
 	return true

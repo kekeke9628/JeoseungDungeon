@@ -59,6 +59,7 @@ static func _read(item: ItemData, player: Player) -> bool:
 			GameState.identify(item.id)
 			GameState.remove_item(item)
 			MessageBus.log_message("부적이 타오르며 %s에게 %d의 피해를 입혔다!" % [target.display_name, item.value_a])
+			Fx.flame(target)
 			target.take_damage(item.value_a)
 			return true
 		"teleport_talisman":
@@ -68,7 +69,9 @@ static func _read(item: ItemData, player: Player) -> bool:
 				return false
 			GameState.identify(item.id)
 			GameState.remove_item(item)
+			Fx.teleport(player.get_parent(), player.grid_pos)
 			DungeonState.move_actor(player, player.grid_pos, dest)
+			Fx.teleport(player.get_parent(), dest)
 			player.pick_up_here()
 			MessageBus.log_message("몸이 순식간에 다른 곳으로 옮겨졌다!")
 			return true

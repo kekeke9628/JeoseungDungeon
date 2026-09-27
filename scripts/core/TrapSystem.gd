@@ -38,13 +38,19 @@ static func trigger(actor: Actor, pos: Vector2i) -> bool:
 				MessageBus.log_message("함정이다! 발밑이 꺼지며 다른 곳으로 끌려갔다.")
 			elif seen:
 				MessageBus.log_message("%s 함정에 빠져 어디론가 사라졌다." % Josa.i_ga(actor.display_name))
+			if seen:
+				Fx.teleport(actor.get_parent(), actor.grid_pos)
 			DungeonState.move_actor(actor, actor.grid_pos, dest)
+			if DungeonState.visible_tiles.has(dest) or is_player:
+				Fx.teleport(actor.get_parent(), dest)
 			if is_player:
 				actor.pick_up_here()
 			else:
 				actor.visible = DungeonState.visible_tiles.has(dest)
 			return true
 	var dmg: int = BASE_DAMAGE + GameState.current_floor
+	if seen:
+		Fx.dust(actor.get_parent(), pos)
 	if is_player:
 		MessageBus.log_message("함정이다! 가시에 찔려 %d의 피해를 입었다." % dmg)
 		GameState.last_attacker = "함정"

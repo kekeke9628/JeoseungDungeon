@@ -14,6 +14,9 @@ enum AIType { WANDER, AGGRESSIVE, RANGED, AMBUSH }
 @export var min_floor: int = 1
 @export var max_floor: int = 8
 @export var color: Color = Color.WHITE
+## What sprays out when it is hit: blood by default, soul-stuff for spirits,
+## sparks for things of metal.
+@export var hit_color: Color = Color(0.72, 0.1, 0.14)
 ## Single-character glyph rendered as placeholder art until real sprites exist.
 @export var glyph: String = "?"
 @export var is_boss: bool = false
