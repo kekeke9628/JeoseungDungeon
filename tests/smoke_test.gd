@@ -1202,6 +1202,7 @@ func _test_hunger() -> void:
 	check(rice.get_display_name(false) == "주먹밥", "food needs no identifying")
 	var refused: bool = not ItemEffects.use_item(rice, p)
 	check(refused and _count_in_bag("jumeokbap") == 1, "nothing is eaten when full")
+	check(game.hud.summary().contains("든든함 100%"), "a fresh run shows a full meter")
 	var turns: int = GameState.turn_count
 	p.wait_turn()
 	check(GameState.hunger == 1 and GameState.turn_count == turns + 1, "hunger grows by one each turn")
@@ -1209,6 +1210,8 @@ func _test_hunger() -> void:
 	p.wait_turn()
 	check(lines.any(func(l): return l.contains("배가 고프다")), "the player is warned when hungry")
 	check(game.hud.summary().contains("배고픔"), "the HUD shows hunger")
+	check(game.hud.summary().contains("배고픔 33%"), "the meter shows how full, as a percentage")
+	check(Player.hunger_stage(0) == "든든함" and Player.hunger_stage(Player.WELL_FED) == "보통", "stages")
 	GameState.hunger = Player.STARVING - 1
 	p.current_hp = p.stats.max_hp - 20
 	var hp: int = p.current_hp

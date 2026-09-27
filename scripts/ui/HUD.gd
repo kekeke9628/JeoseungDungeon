@@ -1,7 +1,8 @@
 class_name HUD
 extends Control
-## Top status bar: floor, a health bar, level and experience bar, coins,
-## status marks (hunger, poison...), and the settings and bag buttons.
+## Top status bar: floor, a health bar, level and experience bar, coins, a
+## hunger meter, timed conditions (poison, stun), and the settings and bag
+## buttons.
 ## Built in code; fixed layout for the 720x1280 portrait viewport.
 
 signal inventory_pressed
@@ -12,11 +13,16 @@ const HP_COLOR := Color(0.82, 0.2, 0.22)
 const XP_COLOR := Color(0.92, 0.72, 0.28)
 ## Status marks, most urgent first: the label takes the colour of the worst.
 const STATUS_COLORS: Array = [
-	["굶주림", Color(1.0, 0.35, 0.3)],
 	["독", Color(0.5, 0.95, 0.45)],
 	["기절", Color(1.0, 0.9, 0.4)],
-	["배고픔", Color(1.0, 0.65, 0.3)],
 ]
+## Hunger meter colour per stage (Player.hunger_stage).
+const HUNGER_COLORS := {
+	"든든함": Color(0.45, 0.8, 0.35),
+	"보통": Color(0.88, 0.72, 0.28),
+	"배고픔": Color(1.0, 0.5, 0.18),
+	"굶주림": Color(0.9, 0.18, 0.18),
+}
 
 ## A framed bar filled from the left, shaded top to bottom in 2px rows so it
 ## matches the pixel art.
@@ -49,6 +55,8 @@ var _status_label: Label
 var _hp_text: Label
 var _hp_bar: Bar
 var _xp_bar: Bar
+var _hunger_bar: Bar
+var _hunger_text: Label
 
 var _floor: int = 1
 var _hp: int = 0
@@ -58,6 +66,7 @@ var _xp: int = 0
 var _xp_next: int = 20
 var _gold: int = 0
 var _status: String = ""
+var _hunger: int = 0
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -89,7 +98,19 @@ func _init() -> void:
 	_hp_text.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	_hp_text.add_theme_constant_override("outline_size", 5)
 	_xp_bar = _bar(Vector2(18, 82), Vector2(300, 12), XP_COLOR, frame)
-	_status_label = _label(Vector2(330, 50), Vector2(210, 40), 22, UITheme.TEXT)
+	var bowl := TextureRect.new()
+	bowl.texture = SpriteLibrary.get_item("sajatbap")
+	bowl.position = Vector2(330, 49)
+	bowl.size = Vector2(32, 32)
+	bowl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bowl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bowl)
+	_hunger_bar = _bar(Vector2(366, 50), Vector2(180, 30), HUNGER_COLORS["든든함"], frame)
+	_hunger_text = _label(Vector2(366, 50), Vector2(180, 30), 18, UITheme.TEXT)
+	_hunger_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hunger_text.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_hunger_text.add_theme_constant_override("outline_size", 5)
+	_status_label = _label(Vector2(430, 8), Vector2(130, 36), 22, UITheme.TEXT)
 
 	_icon_button("settings", Vector2(566, 12), func(): settings_pressed.emit())
 	_icon_button("bag", Vector2(642, 12), func(): inventory_pressed.emit())
@@ -148,10 +169,15 @@ func set_status(text: String) -> void:
 	_status = text
 	_refresh()
 
+## Hunger in turns (GameState.hunger): shown as fullness with its stage name.
+func set_hunger(hunger: int) -> void:
+	_hunger = hunger
+	_refresh()
+
 ## Everything the bar says, as one string (for tests and debugging).
 func summary() -> String:
 	var parts: Array[String] = [_floor_label.text, _level_label.text, _gold_label.text]
-	parts.append_array([_hp_text.text, _status_label.text])
+	parts.append_array([_hp_text.text, _hunger_text.text, _status_label.text])
 	return " ".join(parts)
 
 func _refresh() -> void:
@@ -161,8 +187,17 @@ func _refresh() -> void:
 	_hp_text.text = "%d / %d" % [_hp, _max_hp]
 	_hp_bar.ratio = float(_hp) / float(maxi(1, _max_hp))
 	_xp_bar.ratio = float(_xp) / float(maxi(1, _xp_next))
+	var stage: String = Player.hunger_stage(_hunger)
+	var full: float = Player.fullness(_hunger)
+	_hunger_bar.ratio = full
+	_hunger_bar.color = HUNGER_COLORS[stage]
+	_hunger_text.text = "%s %d%%" % [stage, roundi(full * 100.0)]
+	# starving empties the bar, so the words themselves turn red
+	var text_color: Color = Color(1.0, 0.4, 0.35) if stage == "굶주림" else UITheme.TEXT
+	_hunger_text.add_theme_color_override("font_color", text_color)
 	_hp_bar.queue_redraw()
 	_xp_bar.queue_redraw()
+	_hunger_bar.queue_redraw()
 	_status_label.text = _status
 	var color: Color = UITheme.TEXT
 	for entry in STATUS_COLORS:

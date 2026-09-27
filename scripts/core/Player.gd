@@ -14,6 +14,8 @@ const WELL_HEAL_FRACTION: float = 0.5
 ## keeps resting to full health after every fight from being free.
 const HUNGRY: int = 300
 const STARVING: int = 450
+## Below this the player is well fed ("든든함"); from here to HUNGRY, "보통".
+const WELL_FED: int = 150
 ## While starving, 1 HP is lost every this many turns.
 const STARVE_INTERVAL: int = 2
 
@@ -143,13 +145,24 @@ func tick_hunger() -> void:
 func is_starving() -> bool:
 	return GameState.hunger >= STARVING
 
+## How hungry a hunger value is, in words: 든든함, 보통, 배고픔 or 굶주림.
+static func hunger_stage(hunger: int) -> String:
+	if hunger >= STARVING:
+		return "굶주림"
+	if hunger >= HUNGRY:
+		return "배고픔"
+	if hunger >= WELL_FED:
+		return "보통"
+	return "든든함"
+
+## How full a hunger value is, from 1 (just ate) to 0 (starving).
+static func fullness(hunger: int) -> float:
+	return clampf(1.0 - float(hunger) / float(STARVING), 0.0, 1.0)
+
+## Timed conditions (poison, stun). Hunger has its own meter on the HUD.
 func status_text() -> String:
 	var names := {"poison": "독", "stun": "기절"}
 	var parts: Array[String] = []
-	if is_starving():
-		parts.append("굶주림")
-	elif GameState.hunger >= HUNGRY:
-		parts.append("배고픔")
 	for key in statuses.keys():
 		parts.append("%s %d" % [names.get(key, key), statuses[key]])
 	return " ".join(parts)
