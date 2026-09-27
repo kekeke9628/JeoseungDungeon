@@ -106,6 +106,7 @@ func apply(data: Dictionary, player: Player) -> void:
 			var gear: ItemData = ItemDatabase.get_item(str(worn[slot]))
 			if gear != null and gear.equip_slot() == str(slot):
 				GameState.equipped[str(slot)] = gear
+	GameState.equipment_changed.emit()
 	GameState.identified_types.clear()
 	for id in data.identified:
 		GameState.identified_types[str(id)] = true

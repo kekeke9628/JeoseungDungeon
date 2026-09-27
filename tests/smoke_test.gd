@@ -3,8 +3,9 @@ extends Node
 ##   Godot --headless --path . res://tests/SmokeTest.tscn
 ## Exits with code 1 if any check fails.
 
-## Long enough for every popup and death effect to finish and free itself.
-const DUNGEON_FX_WAIT: float = 1.0
+## Long enough for every popup and death effect to finish and free itself
+## (the longest, the soul wisps of a kill, live up to 1s).
+const DUNGEON_FX_WAIT: float = 1.5
 
 var failures: int = 0
 var game: Node2D
@@ -1036,11 +1037,21 @@ func _test_paper_doll() -> void:
 	bag._on_action_pressed()
 	check(GameState.equipped.get("head") == hat, "wearing from the bag puts it on")
 	check(GameState.turn_count == turns + 1, "wearing takes a turn")
+	var layers: int = p.layer_count()
+	check(layers == 2, "the hat shows on the character, over the sword (%d)" % layers)
+	var flying: bool = bag.get_children().any(func(c): return c is TextureRect)
+	check(flying and bag._flying_slot == "head", "its icon flies from the bag to the slot")
+	check(bag._doll.layers.size() == 2, "the figure waits for it to land")
+	await get_tree().create_timer(0.5).timeout
+	flying = bag.get_children().any(func(c): return c is TextureRect)
+	check(not flying and bag._flying_slot == "", "and lands")
+	check(bag._doll.layers.size() == 3, "then the bag's figure wears it too (body, sword, hat)")
 	var head_icon: Texture2D = bag._slot_buttons["head"].icon
 	check(bag._sel_slot == "head" and head_icon != null, "the doll shows where it went")
 	check(bag._action.text == "벗기", "a worn slot offers to take it off")
 	bag._on_action_pressed()
 	check(not GameState.equipped.has("head"), "taking off from the doll works")
+	check(p.layer_count() == 1 and bag._doll.layers.size() == 2, "and it leaves the character")
 	check(GameState.turn_count == turns + 2, "taking off takes a turn")
 	check(bag._sel_item == hat and bag._sel_slot == "", "what was taken off is selected in the bag")
 	var wine: ItemData = ItemDatabase.get_item("flower_wine")
@@ -1278,6 +1289,15 @@ func _test_graphics() -> void:
 		var sized: bool = frames.all(func(t): return t.get_size() == Vector2(24, 24))
 		art_ok = art_ok and frames.size() == 2 and sized
 	check(art_ok, "every character has two 24px idle frames")
+	var gear_ok: bool = true
+	for id in ItemDatabase.items.keys():
+		var item: ItemData = ItemDatabase.get_item(id)
+		if item.is_equipment():
+			gear_ok = gear_ok and SpriteLibrary.get_gear_frames(id).size() == 2
+	check(gear_ok, "every piece of equipment has a worn layer")
+	var bare_ok: bool = ["mudang", "hwarang", "dosa"].all(
+		func(c): return SpriteLibrary.get_actor_frames(c + "_bare").size() == 2)
+	check(bare_ok, "every class has a bare body to dress")
 	await _new_game("hwarang")
 	_clear_monsters()
 	var p: Player = game.player
@@ -1326,8 +1346,11 @@ func _test_hit_feel() -> void:
 	game._refresh_vision()
 	goblin.set_hit_from(p.grid_pos)
 	goblin.take_damage(1)
-	await get_tree().create_timer(0.02).timeout
-	check(goblin.body.position.x > 0.0, "a blow knocks the target back, away from the attacker")
+	var pushed: float = 0.0
+	for i in range(20):
+		await get_tree().create_timer(0.008).timeout
+		pushed = maxf(pushed, goblin.body.position.x)
+	check(pushed > 0.0, "a blow knocks the target back, away from the attacker")
 	var labels: Array = game.world.get_children().filter(func(c): return c is Label)
 	var small: Label = labels.back()
 	goblin.take_damage(400)

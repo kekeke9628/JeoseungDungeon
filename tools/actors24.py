@@ -204,7 +204,8 @@ def quadruped(f, body="fur", head_mat=None, legs="fur", tail="fur", belly=None, 
 # ------------------------------------------------------------ heroes
 
 def mudang(f):
-    """Shaman: white robe, red sash, a five-colour fan and a hairpin."""
+    """Shaman: white robe, red sash, a hairpin and a bunch of bells. What
+    she holds in her right hand is her weapon (tools/gear24.py)."""
     human(f, robe="robe", sleeve="robe")
     f.box(8, 15, 16, 15, "sash", fade=0)
     f.ell(14.5, 15.5, 1.3, 1.1, "sash")  # a knot on one side, ribbons hanging
@@ -217,15 +218,13 @@ def mudang(f):
     f.dot(16, 2, "gold", 2)
     f.box(9, 3, 10, 6, "hair")
     f.box(14, 3, 15, 6, "hair")
-    for i, c in enumerate(("fan_r", "fan_y", "fan_b")):  # fan in the right hand
-        f.poly([(18, 18), (21 - i, 12 + i * 2), (23 - i, 13 + i * 2)], c, flat=3)
     f.dot(5, 19, "gold", 3)  # bells
     f.dot(6, 20, "gold", 2)
     f.dot(4, 20, "gold", 2)
 
 
 def hwarang(f):
-    """Young knight: blue robe, gold belt, headband, a raised sword."""
+    """Young knight: blue robe, gold belt, headband. His sword is gear."""
     human(f, robe="robe", sleeve="robe")
     f.box(8, 15, 16, 15, "gold", fade=0)
     head(f)
@@ -234,10 +233,6 @@ def hwarang(f):
     f.box(8, 5, 16, 5, "band", fade=0)
     f.dot(7, 6, "band", 2)
     f.dot(7, 7, "band", 1)
-    f.line(18, 17, 22, 5, "steel", 3)  # sword
-    f.line(19, 17, 23, 6, "steel", 1)
-    f.box(17, 17, 19, 17, "gold", flat=2)
-    f.box(17, 18, 17, 19, "hilt", flat=2)
 
 
 def dosa(f):
@@ -537,10 +532,9 @@ COMMON = {"eye": flat((250, 250, 250)), "mouth": flat((60, 24, 30)), "fang": (24
 # id: (draw function, idle mode, waist row for breathing, palette)
 ACTORS = {
     "mudang": (mudang, "breath", 13, dict(robe=(236, 236, 246), sash=(206, 44, 54), hair=(40, 34, 48), skin=SKIN,
-                                         fan_r=(214, 50, 50), fan_y=(240, 200, 60), fan_b=(60, 100, 200),
                                          eye=flat((40, 30, 40)))),
     "hwarang": (hwarang, "breath", 13, dict(robe=(78, 128, 214), hair=(40, 34, 48), skin=SKIN, band=(210, 50, 60),
-                                           steel=(214, 220, 236), hilt=(110, 70, 40), eye=flat((40, 30, 40)))),
+                                           eye=flat((40, 30, 40)))),
     "dosa": (dosa, "breath", 13, dict(robe=(88, 168, 100), sash=(240, 240, 240), hat=(48, 44, 56), skin=SKIN,
                                      beard=(236, 236, 240), staff=(140, 96, 56), gourd=(214, 150, 60),
                                      eye=flat((40, 30, 40)))),
@@ -591,10 +585,13 @@ def frames(actor_id):
     return [f.render(full), f.shifted(mode, waist).render(full)]
 
 
-def strip(actor_id):
-    """Both idle frames side by side (48x24): what the game loads."""
-    a, b = frames(actor_id)
-    out = canvas(S * 2, S)
-    out.alpha_composite(a, (0, 0))
-    out.alpha_composite(b, (S, 0))
+def join(frame_list):
+    """Idle frames side by side: what the game loads."""
+    out = canvas(S * len(frame_list), S)
+    for i, img in enumerate(frame_list):
+        out.alpha_composite(img, (i * S, 0))
     return out
+
+
+def strip(actor_id):
+    return join(frames(actor_id))

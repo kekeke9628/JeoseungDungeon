@@ -25,6 +25,12 @@ const SHAKE_LIGHT: float = 5.0
 const SHAKE_HEAVY: float = 11.0
 const SHAKE_TIME: float = 0.22
 
+## Where each worn slot sits on a hero's 24px body (tools/gear24.py), in art px.
+const GEAR_SPOTS := {
+	"head": Vector2(12, 3), "weapon": Vector2(20, 12), "armor": Vector2(12, 13),
+	"amulet": Vector2(14.5, 17.5), "ring": Vector2(7, 18), "boots": Vector2(12, 21.5),
+}
+
 ## Off in headless test runs, where frames only pass when a test waits and a
 ## slowed clock would only slow the tests.
 static var hit_stop_enabled: bool = true
@@ -32,6 +38,7 @@ static var hit_stop_enabled: bool = true
 static var camera: Camera2D
 static var camera_rest := Vector2.ZERO
 static var _stop_until_ms: int = 0
+static var _stop_token: int = 0
 static var _shake_tween: Tween
 static var _rng := RandomNumberGenerator.new()
 
@@ -89,21 +96,25 @@ static func impact(target, from_tile: Vector2i) -> void:
 	shape(target.get_parent(), at, FxShape.Kind.SPARK, Color(1.0, 0.98, 0.85), 0.12, 20.0, 3.0)
 
 ## Freezes the picture for a moment. Only the clock of animations slows; the
-## game has already moved on, so nothing waits for this.
+## game has already moved on, so nothing waits for this. Overlapping freezes
+## merge: only the one that ends last turns the clock back on.
 static func hit_stop(from: Node, seconds: float) -> void:
 	if not hit_stop_enabled or from == null or not from.is_inside_tree():
 		return
 	var until: int = Time.get_ticks_msec() + int(seconds * 1000.0)
 	if until <= _stop_until_ms:
-		return
+		return  # a freeze that lasts longer is already on
 	_stop_until_ms = until
+	_stop_token += 1
+	var token: int = _stop_token
 	Engine.time_scale = HIT_STOP_SCALE
 	var timer := from.get_tree().create_timer(seconds, true, false, true)
-	timer.timeout.connect(_end_hit_stop)
+	timer.timeout.connect(func(): _end_hit_stop(token))
 
-static func _end_hit_stop() -> void:
-	if Time.get_ticks_msec() >= _stop_until_ms - 2:
+static func _end_hit_stop(token: int) -> void:
+	if token == _stop_token:
 		Engine.time_scale = 1.0
+		_stop_until_ms = 0
 
 ## Shakes the camera; a stronger shake replaces a weaker one in progress.
 static func shake(strength: float) -> void:
@@ -154,6 +165,18 @@ static func level_up(actor) -> void:
 	var b := burst(actor.get_parent(), at + Vector2(0, 14), GOLD, 20, 60.0, -160.0, 1.0, 1)
 	b.spread = PI * 0.4
 	b.scatter = 16.0
+
+## A glint on the body part something was just put on.
+static func equip(actor, slot: String) -> void:
+	if not _shown(actor) or not GEAR_SPOTS.has(slot):
+		return
+	var spot: Vector2 = GEAR_SPOTS[slot]
+	if actor.sprite.flip_h:
+		spot.x = 24.0 - spot.x
+	var at: Vector2 = actor.position + spot * (Constants.TILE_SIZE / 24.0)
+	shape(actor.get_parent(), at, FxShape.Kind.RING, GOLD, 0.35, 18.0, 2.0)
+	var b := burst(actor.get_parent(), at, GOLD, 10, 60.0, -40.0, 0.5, 1)
+	b.scatter = 4.0
 
 ## Salpuri: rings in the shaman's colours and petals thrown up.
 static func salpuri(actor) -> void:

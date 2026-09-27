@@ -111,6 +111,8 @@ static func _equip(item: ItemData, player: Player) -> bool:
 		GameState.add_item(old)
 	GameState.equipped[slot] = item
 	_apply_bonuses(player, item, 1)
+	GameState.equipment_changed.emit()
+	Fx.equip(player, slot)
 	MessageBus.log_message("%s 장착했다." % Josa.eul_reul(item.identified_name))
 	return true
 
@@ -122,6 +124,7 @@ static func unequip(slot: String, player: Player) -> bool:
 		return false
 	GameState.equipped.erase(slot)
 	_apply_bonuses(player, item, -1)
+	GameState.equipment_changed.emit()
 	GameState.add_item(item)
 	AudioManager.play("equip")
 	MessageBus.log_message("%s 벗었다." % Josa.eul_reul(item.identified_name))

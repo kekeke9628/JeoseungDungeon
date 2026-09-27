@@ -1,8 +1,12 @@
 class_name InventoryPanel
 extends Control
-## Paper-doll bag, after IsoDungeonRPG's inventory: the six worn slots sit on a
-## body silhouette where the gear is worn, the bag is a fixed grid of icon cells
+## Paper-doll bag, after IsoDungeonRPG's inventory: the player's own character
+## stands in the middle, drawn large and wearing everything that is worn (the
+## same gear layers as on the map), with the six slots around it joined by a
+## line to the body part they dress. The bag is a fixed grid of icon cells
 ## below, and one detail line with a single action button explains the pick.
+## Putting something on flies its icon from the bag to its slot, and the
+## figure bounces with a glint where it went.
 ## Tapping a cell or slot selects it; the button then wears, drinks, reads or
 ## takes off. Game.gd applies the choice (item_chosen / unequip_chosen), so each
 ## one spends a turn like any other action.
@@ -16,16 +20,17 @@ const CELL_SIZE := Vector2(92, 92)
 const BAG_COLS := 6
 ## The bag always draws at least this many cells so it reads as a bag, not a list.
 const BAG_MIN_CELLS := 24
-## The silhouette's place in the panel (the texture is 260x460, drawn at 0.826).
-const BODY_RECT := Rect2(233, 76, 215, 380)
-## Slot positions (top-left, in panel coordinates) over the matching body part.
+## The figure: 24px character art at 9x, top-left in panel coordinates.
+const FIGURE_POS := Vector2(232, 96)
+const FIGURE_SCALE: int = 9
+## Slots in two columns beside the figure (top-left, panel coordinates).
 const SLOT_LAYOUT := {
-	"head": Vector2(302, 79),
-	"amulet": Vector2(414, 112),
-	"armor": Vector2(302, 203),
-	"weapon": Vector2(184, 262),
-	"ring": Vector2(420, 262),
-	"boots": Vector2(302, 380),
+	"head": Vector2(44, 90),
+	"armor": Vector2(44, 190),
+	"ring": Vector2(44, 290),
+	"weapon": Vector2(560, 120),
+	"amulet": Vector2(560, 220),
+	"boots": Vector2(560, 320),
 }
 const SLOT_NAMES := {
 	"head": "머리", "weapon": "무기", "armor": "옷",
@@ -45,9 +50,60 @@ const EDGE := Color(0.36, 0.30, 0.50)
 const EDGE_SELECT := Color(1.0, 0.86, 0.38)
 const CELL_BG := Color(0.11, 0.09, 0.17)
 const CELL_BG_HOVER := Color(0.17, 0.14, 0.26)
-const BODY_TEXTURE := "res://assets/sprites/ui/paperdoll_body.png"
+const LEADER := Color(0.85, 0.7, 0.35, 0.55)
+const GAP := 12.0  # between bag cells
+
+## The large character in the middle, wearing what is worn, with lines from
+## each slot to the body part it dresses.
+class Doll:
+	extends Control
+
+	var layers: Array = []  # [TextureRect, Array[Texture2D]] per layer, bottom first
+	var lines: Array = []  # [from, to, color] in this control's coordinates
+	## Holds the layers; scaled from the feet for the bounce when gear goes on.
+	var figure: Control
+	var _frame: int = 0
+
+	func _init() -> void:
+		figure = Control.new()
+		figure.position = InventoryPanel.FIGURE_POS
+		figure.size = Vector2(24, 24) * InventoryPanel.FIGURE_SCALE
+		figure.pivot_offset = Vector2(figure.size.x * 0.5, figure.size.y * 0.92)
+		figure.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(figure)
+
+	func _draw() -> void:
+		var s: float = InventoryPanel.FIGURE_SCALE
+		var foot := InventoryPanel.FIGURE_POS + Vector2(12, 22) * s
+		# a pool of light under the figure and a shadow at its feet
+		draw_set_transform(foot + Vector2(0, -80), 0.0, Vector2(1.0, 1.25))
+		draw_circle(Vector2.ZERO, 120.0, Color(0.95, 0.75, 0.35, 0.06))
+		draw_circle(Vector2.ZERO, 80.0, Color(0.95, 0.75, 0.35, 0.06))
+		draw_set_transform(foot, 0.0, Vector2(1.0, 0.28))
+		draw_circle(Vector2.ZERO, 70.0, Color(0, 0, 0, 0.35))
+		draw_set_transform(Vector2.ZERO)
+		for l in lines:
+			draw_line(l[0], l[1], l[2], 2.0)
+			draw_circle(l[1], 4.0, l[2])
+
+	func step() -> void:
+		_frame += 1
+		for l in layers:
+			var frames: Array = l[1]
+			if not frames.is_empty():
+				l[0].texture = frames[_frame % frames.size()]
 
 var _slot_buttons: Dictionary = {}  # slot -> Button
+var _scroll: ScrollContainer
+## The slot an icon is flying to; its pop waits for the landing.
+var _flying_slot: String = ""
+## While an icon is in the air, its slot and the figure keep showing what was
+## worn before (slot -> ItemData or null), so the gear goes on as it lands.
+var _held: Dictionary = {}
+var _doll: Doll
+var _doll_bounce: Tween
+## What was worn at the last refresh, to tell what just changed.
+var _worn_before: Dictionary = {}
 var _grid: GridContainer
 var _stats: Label
 var _detail: Label
@@ -88,36 +144,32 @@ func _init() -> void:
 	close.pressed.connect(hide_panel)
 	add_child(close)
 
-	_stats = Label.new()
-	_stats.position = Vector2(24, 84)
-	_stats.size = Vector2(170, 170)
-	_stats.add_theme_font_size_override("font_size", 21)
-	add_child(_stats)
+	_doll = Doll.new()
+	_doll.size = PANEL_SIZE
+	_doll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_doll)
+	var breathe := _doll.create_tween().set_loops()
+	breathe.tween_interval(0.5)
+	breathe.tween_callback(_doll.step)
 
-	var body := TextureRect.new()
-	body.texture = load(BODY_TEXTURE)
-	# Expand mode first: while it is KEEP_SIZE, a size smaller than the texture
-	# is clamped up to the texture's own 260x460 and stays that way.
-	body.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	body.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	body.position = BODY_RECT.position
-	body.size = BODY_RECT.size
-	body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	body.modulate = Color(1, 1, 1, 0.85)
-	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(body)
+	_stats = Label.new()
+	_stats.position = Vector2(0, 412)
+	_stats.size = Vector2(PANEL_SIZE.x, 40)
+	_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stats.add_theme_font_size_override("font_size", 22)
+	add_child(_stats)
 	_build_slots()
 
-	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(30, 476)
-	scroll.size = Vector2(624, 410)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.position = Vector2(30, 476)
+	_scroll.size = Vector2(624, 410)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(_scroll)
 	_grid = GridContainer.new()
 	_grid.columns = BAG_COLS
-	_grid.add_theme_constant_override("h_separation", 12)
-	_grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(_grid)
+	_grid.add_theme_constant_override("h_separation", int(GAP))
+	_grid.add_theme_constant_override("v_separation", int(GAP))
+	_scroll.add_child(_grid)
 
 	_detail = Label.new()
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -135,6 +187,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	GameState.inventory_changed.connect(_on_inventory_changed)
+	GameState.equipment_changed.connect(_on_equipment_changed)
 
 func _on_inventory_changed() -> void:
 	if visible:
@@ -143,6 +196,8 @@ func _on_inventory_changed() -> void:
 func show_panel() -> void:
 	visible = true
 	_clear_selection()
+	_held.clear()
+	_worn_before = GameState.equipped.duplicate()
 	refresh()
 
 func hide_panel() -> void:
@@ -160,6 +215,7 @@ func refresh() -> void:
 		_sel_item = null
 	_refresh_stats()
 	_refresh_slots()
+	_refresh_doll()
 	_refresh_bag()
 	_refresh_detail()
 
@@ -191,16 +247,141 @@ func _refresh_stats() -> void:
 	if p == null or not is_instance_valid(p):
 		_stats.text = ""
 		return
-	_stats.text = "공격 %d-%d\n방어 %d\n체력 %d/%d" % [
+	_stats.text = "공격 %d-%d    방어 %d    체력 %d/%d" % [
 		p.stats.attack_min, p.stats.attack_max, p.stats.defense, p.current_hp, p.stats.max_hp]
+
+## What a slot shows: what is worn, unless an icon is still flying to it.
+func _shown(slot: String) -> ItemData:
+	return _held[slot] if _held.has(slot) else GameState.equipped.get(slot)
 
 func _refresh_slots() -> void:
 	for slot in _slot_buttons.keys():
 		var btn: Button = _slot_buttons[slot]
-		var worn: ItemData = GameState.equipped.get(slot)
+		var worn: ItemData = _shown(slot)
 		btn.icon = SpriteLibrary.get_item(worn.id) if worn != null else null
 		btn.get_node("Tag").visible = worn == null
 		_paint(btn, _sel_slot == slot)
+
+## Rebuilds the figure from the bare body and the worn gear, and the lines
+## from each slot to its body part.
+func _refresh_doll() -> void:
+	for l in _doll.layers:
+		l[0].queue_free()
+	_doll.layers.clear()
+	var sets: Array = []
+	if GameState.player_class != null:
+		var cid: String = GameState.player_class.id
+		var base: Array[Texture2D] = SpriteLibrary.get_actor_frames(cid + "_bare")
+		sets.append(base if not base.is_empty() else SpriteLibrary.get_actor_frames(cid))
+	for slot in Player.GEAR_ORDER:
+		var worn: ItemData = _shown(slot)
+		if worn != null:
+			sets.append(SpriteLibrary.get_gear_frames(worn.id))
+	for frames in sets:
+		if frames.is_empty():
+			continue
+		var r := TextureRect.new()
+		r.texture = frames[0]
+		r.size = _doll.figure.size
+		r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		r.stretch_mode = TextureRect.STRETCH_SCALE
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_doll.figure.add_child(r)
+		_doll.layers.append([r, frames])
+	_doll.lines.clear()
+	for slot in SLOT_LAYOUT:
+		var at: Vector2 = SLOT_LAYOUT[slot]
+		var left_column: bool = at.x < FIGURE_POS.x
+		var from := at + Vector2(SLOT_SIZE.x if left_column else 0.0, SLOT_SIZE.y * 0.5)
+		var color: Color = SLOT_COLORS[slot]
+		color.a = 0.55 if _shown(slot) != null else 0.2
+		_doll.lines.append([from, _anchor(slot), color])
+	_doll.queue_redraw()
+
+## Where slot's body part is on the figure, in panel coordinates.
+func _anchor(slot: String) -> Vector2:
+	return FIGURE_POS + Fx.GEAR_SPOTS[slot] * FIGURE_SCALE
+
+## Gear went on or came off: pop the slot, glint on the body part, bounce the
+## figure. An item flying in from the bag does this when it lands instead.
+func _on_equipment_changed() -> void:
+	if not visible:
+		_worn_before = GameState.equipped.duplicate()
+		return
+	for slot in GameState.EQUIP_SLOTS:
+		var now: ItemData = GameState.equipped.get(slot)
+		if now == _worn_before.get(slot):
+			continue
+		if slot == _flying_slot:
+			continue
+		_celebrate(slot, now != null)
+	_worn_before = GameState.equipped.duplicate()
+
+func _celebrate(slot: String, put_on: bool) -> void:
+	var btn: Button = _slot_buttons[slot]
+	btn.pivot_offset = SLOT_SIZE * 0.5
+	btn.scale = Vector2(1.3, 1.3) if put_on else Vector2(0.85, 0.85)
+	var pop := btn.create_tween()
+	var settle := pop.tween_property(btn, "scale", Vector2.ONE, 0.2)
+	settle.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if put_on:
+		var ring := FxShape.new()
+		ring.kind = FxShape.Kind.RING
+		ring.color = UITheme.GOLD
+		ring.time = 0.45
+		ring.radius = 46.0
+		ring.width = 3.0
+		ring.position = _anchor(slot)
+		add_child(ring)
+		var sparks := PixelBurst.new()
+		sparks.color = UITheme.GOLD
+		sparks.count = 16
+		sparks.speed = 160.0
+		sparks.gravity = 120.0
+		sparks.size = 2
+		sparks.position = _anchor(slot)
+		add_child(sparks)
+	if _doll_bounce != null and _doll_bounce.is_valid():
+		_doll_bounce.kill()
+	var fig: Control = _doll.figure
+	fig.scale = Vector2(1.08, 0.9) if put_on else Vector2(0.96, 1.04)
+	_doll_bounce = fig.create_tween()
+	_doll_bounce.tween_property(fig, "scale", Vector2(0.97, 1.05), 0.09)
+	_doll_bounce.tween_property(fig, "scale", Vector2.ONE, 0.14)
+
+## The bag cell an item sits in, in panel coordinates (the grid lays cells out
+## in inventory order).
+func _cell_rect(item: ItemData) -> Rect2:
+	for i in range(GameState.inventory.size()):
+		if GameState.inventory[i].item_data == item:
+			var cell := Vector2((i % BAG_COLS) * (CELL_SIZE.x + GAP), (i / BAG_COLS) * (CELL_SIZE.y + GAP))
+			return Rect2(_scroll.position + cell - Vector2(0, _scroll.scroll_vertical), CELL_SIZE)
+	return Rect2(_action.position, CELL_SIZE)
+
+## Flies item's icon from start to its slot, then pops the slot.
+func _fly_to_slot(item: ItemData, start: Rect2) -> void:
+	var slot: String = item.equip_slot()
+	var icon := TextureRect.new()
+	icon.texture = SpriteLibrary.get_item(item.id)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
+	icon.position = start.position + Vector2(12, 12)
+	icon.size = start.size - Vector2(24, 24)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(icon)
+	var target: Vector2 = SLOT_LAYOUT[slot] + Vector2(10, 12)
+	var fly := icon.create_tween().set_parallel(true)
+	var arc := fly.tween_property(icon, "position", target, 0.24)
+	arc.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	fly.tween_property(icon, "size", SLOT_SIZE - Vector2(20, 22), 0.24)
+	fly.chain().tween_callback(func():
+		icon.queue_free()
+		if _flying_slot == slot:
+			_flying_slot = ""
+		_held.erase(slot)
+		if visible:
+			refresh()
+		_celebrate(slot, true))
 
 func _refresh_bag() -> void:
 	for c in _grid.get_children():
@@ -298,11 +479,19 @@ func _on_action_pressed() -> void:
 			_sel_item = worn
 	elif _sel_item != null:
 		var item: ItemData = _sel_item
+		var start: Rect2 = _cell_rect(item)
+		if item.is_equipment():
+			_flying_slot = item.equip_slot()
+			_held[_flying_slot] = GameState.equipped.get(_flying_slot)
 		item_chosen.emit(item)
-		# Worn now: select its slot to show where it went.
+		# Worn now: fly it from the bag to its slot, and select the slot.
 		if item.is_equipment() and GameState.equipped.get(item.equip_slot()) == item:
+			_fly_to_slot(item, start)
 			_sel_slot = item.equip_slot()
 			_sel_item = item
+		else:
+			_held.erase(_flying_slot)
+			_flying_slot = ""
 	if visible:
 		refresh()
 
