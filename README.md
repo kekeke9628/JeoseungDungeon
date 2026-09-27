@@ -51,14 +51,22 @@ Shattered Pixel Dungeon에서 장르 영감만 받았고, 코드/아트/이름�
 - 인앱결제 구조: `IAPManager` (부활 부적 소모성 / 후원자 팩 영구). 디버그 빌드에서만 모의 결제, 릴리스는 스토어 연결 전까지 구매 차단(안전장치)
 - 출시 준비: 앱 아이콘, Compatibility 렌더러(저사양 안드로이드 호환), 내보내기 프리셋 템플릿, `docs/RELEASE.md`, `docs/PRIVACY_POLICY.md`, `docs/STORE_LISTING.md`
 - 한글 폰트 번들: Noto Sans KR(OFL)을 KS X 1001 2,350자로 줄여(약 0.8MB) 기본 GUI 폰트로 사용 (`assets/fonts/`)
-- 픽셀아트: 16x16 스프라이트 61종(몬스터 17, 클래스 3, 타일 8, 아이템 아이콘 33)을 `python tools/gen_sprites.py`로 생성. 템플릿은 `tools/sprite_templates.py`
+- 픽셀아트: `python tools/gen_sprites.py` 한 번으로 모두 생성한다(같은 결과가 나오도록 고정된 시드). 지도 위 모든 그림은 화면 2배(48px 칸에 24px 그림)로 그려 픽셀 크기가 같다
+  - 캐릭터 20종(직업 3, 몬스터 17): 24x24, 대기 2프레임(숨쉬기, 귀신은 떠오르기). 도형으로 그리고 왼쪽 위 빛으로 5단계 명암을 자동으로 넣는다 (`tools/actors24.py`)
+  - 타일: 층 구간마다 24x24 아틀라스 한 장(저승길 판석, 황천강 이끼 낀 푸른 돌, 지옥문 현무암과 불빛 균열, 염라전 마루와 단청). 바닥 4종, 벽 앞면·윗면, 드문 특수 벽, 문 두 방향, 계단, 우물·제단(2프레임), 함정, 바닥 장식. 위치표 `scripts/generation/TileAtlas.gd`도 함께 생성 (`tools/gen_tiles.py`)
+  - 아이템 아이콘 33종: 16x16 (`tools/sprite_templates.py`)
+  - UI: 옻칠·금테 버튼과 패널 9-slice, 버튼 아이콘 12종, 타이틀 배경(달밤의 홍살문) (`tools/gen_ui.py`)
+  - 공용 도구 `tools/pixel_kit.py`: 어두울수록 차갑고 밝을수록 따뜻하게 색을 트는 명암 단계 등
+- 조명: 칸당 1픽셀 광원 지도를 부드럽게 늘여 곱한다(`LightOverlay`). 플레이어 곁은 따뜻하고 시야 끝은 어둡고, 기억만 하는 곳은 푸르스름, 안 가 본 곳은 검다. 촛불·제단·계단이 주변을 밝히고 불빛이 살짝 일렁인다. 벽은 아래가 트이면 벽돌 앞면, 아니면 윗면과 밝은 테두리, 벽 밑 바닥에는 그림자
+- 이펙트(`scripts/fx`): 맞으면 몬스터별 색으로 튀고(귀신은 푸른 혼), 죽으면 혼불이 오르고, 회복·줍기·레벨업, 살풀이 오방색 고리·일섬 칼 궤적·뇌전 번개, 함정 먼지·순간이동 소용돌이. 층 구간별로 먼지·물방울·불씨·금가루가 떠다닌다. 모든 연출은 자체 난수를 써서 게임의 주사위를 건드리지 않는다
+- HUD: 체력·경험치 막대, 엽전, 상태 표시 색(굶주림 빨강, 독 초록, 배고픔 주황), 아이콘 버튼. 메시지 창은 최신 줄이 가장 밝다
 - 스프라이트가 없으면 색 사각형+글자로 자동 대체 (`SpriteLibrary`)
 
 ## 구조
 - `autoloads/` 전역 상태 (GameState, DungeonState, TurnManager, SaveManager, ItemDatabase, MonsterDatabase, MessageBus)
-- `scripts/core` Actor/Player/Game/CombatSystem/TrapSystem/Josa, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더
+- `scripts/core` Actor/Player/Game/CombatSystem/TrapSystem/Josa, `scripts/ai` Monster, `scripts/generation` 던전 생성/렌더/조명, `scripts/fx` 이펙트
 - `scripts/items` ItemData/ItemEffects/SkillEffects, `scripts/ui` 코드로 만든 UI
-- 스프라이트는 `assets/sprites/**`(생성 결과물)를 `SpriteLibrary`가 읽음. 더 좋은 아트로 교체하려면 같은 파일명의 PNG로 덮어쓰면 됨
+- 스프라이트는 `assets/sprites/**`(생성 결과물)를 `SpriteLibrary`가 읽음. 더 좋은 아트로 교체하려면 같은 파일명·같은 크기의 PNG로 덮어쓰면 됨(캐릭터는 24x24 프레임을 가로로 이은 한 장, 타일은 `TileAtlas` 배치를 따르는 구간별 아틀라스)
 
 ## 다음 단계
 - Phase 3 남은 것: 실제 스토어 결제 플러그인 연결, Android/iOS 실제 빌드(내보내기 템플릿·JDK·Android SDK 필요, iOS는 Mac 필요), 실기기 터치 테스트, 전문 아트/사운드로 교체(선택)
