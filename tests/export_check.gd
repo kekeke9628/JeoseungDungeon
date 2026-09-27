@@ -21,6 +21,17 @@ func _initialize() -> void:
 	_check(monster_db.get_boss_for_floor(10) != null, "boss for floor 10")
 	_check(monster_db.get_boss_for_floor(20) != null, "boss for floor 20")
 	_check(not monster_db.get_monsters_for_floor(1).is_empty(), "monsters for floor 1")
+	# the art is looked up by path at run time, so check it made it into the build
+	var sprites = load("res://scripts/core/SpriteLibrary.gd")
+	var ui = load("res://scripts/ui/UITheme.gd")
+	var atlases: int = 0
+	for band in ["path", "river", "gate", "palace"]:
+		if sprites.get_tile_atlas(band) != null:
+			atlases += 1
+	_check(atlases == 4, "tile atlases load (%d/4)" % atlases)
+	_check(sprites.get_actor_frames("yeomra").size() == 2, "character idle frames load")
+	_check(ui.icon("attack") != null, "button icons load")
+	_check(ui.panel_box() is StyleBoxTexture, "panel skin loads")
 	print("== export check: %d failure(s)" % failures)
 	quit(1 if failures > 0 else 0)
 
