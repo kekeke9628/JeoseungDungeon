@@ -236,13 +236,26 @@ static func teleport(parent: Node, tile: Vector2i) -> void:
 	var b := burst(parent, at, TELEPORT, 14, 60.0, -120.0, 0.7, 1)
 	b.scatter = 12.0
 
-## Dust kicked up by a spike trap.
+## Dust kicked up from a tile (a spike trap, a boss stamping or charging).
 static func dust(parent: Node, tile: Vector2i) -> void:
 	var ts: float = Constants.TILE_SIZE
 	var at := Vector2(tile.x * ts + ts * 0.5, tile.y * ts + ts * 0.8)
 	var b := burst(parent, at, DUST, 10, 60.0, -30.0, 0.6, 2)
 	b.spread = PI
 	b.scatter = 12.0
+
+## A boss's slam: a shock ring, dust on every tile around it, a hard shake.
+static func slam(actor) -> void:
+	if not _shown(actor):
+		return
+	var parent: Node = actor.get_parent()
+	var ts: float = Constants.TILE_SIZE
+	shape(parent, _center(actor), FxShape.Kind.RING, Color(1.0, 0.45, 0.3), 0.4, ts * 1.6, 6.0)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx != 0 or dy != 0:
+				dust(parent, actor.grid_pos + Vector2i(dx, dy))
+	shake(SHAKE_HEAVY)
 
 ## A full-screen flash under the HUD (lightning, a critical slash).
 static func screen_flash(from: Node, color: Color, time: float = 0.25) -> void:

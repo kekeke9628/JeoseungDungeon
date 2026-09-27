@@ -440,6 +440,52 @@ def yeomra(f):
             f.dot(x, y, "bead", 3 if y == 3 else 2)
 
 
+def eodukssini(f):
+    """Eodukssini (boss): a shadow that grows the longer you look up at it - a
+    hunched dark mass with long arms, a wide head, pale eyes and a grin."""
+    f.poly([(5, 10), (19, 10), (22, 22), (2, 22)], "body")
+    f.ell(12, 15, 8.5, 5.5, "body", bias=0.1)
+    for x in (3, 8, 12, 16, 21):  # ragged edge, like smoke
+        f.poly([(x - 1.5, 21), (x + 1.5, 21), (x, 23.5)], "body", bias=-0.25)
+    f.poly([(1, 12), (6, 10), (7, 18), (2, 20)], "body", bias=0.15)
+    f.poly([(17, 10), (23, 12), (22, 20), (17, 18)], "body", bias=-0.25)
+    for x in (1, 3, 21, 23):
+        f.dot(x, 21, "claw", 3)
+    f.ell(12, 7.5, 6.8, 5.6, "body", bias=0.2)
+    for x, top in ((8, 1), (12, 0), (16, 1)):  # wisps rising off the head
+        f.line(x, 3, x + (1 if x > 12 else -1 if x < 12 else 0), top, "wisp", 2)
+    f.box(8, 6, 9, 7, "eye", flat=2)
+    f.box(14, 6, 15, 7, "eye", flat=2)
+    f.box(8, 10, 16, 11, "mouth", flat=1)
+    for x in (9, 11, 13, 15):
+        f.dot(x, 10, "fang", 3)
+
+
+def udu(f):
+    """Udu Nachal, the ox-headed jailer at the gate of hell (boss): black
+    armour trimmed with gold, wide horns, a gold nose ring and an iron fork."""
+    human(f, robe="armor", sleeve="armor", skin="hand", hem=19, wide=7)
+    f.box(8, 13, 16, 13, "trim", fade=0)
+    f.box(6, 17, 18, 17, "trim", fade=0)
+    f.ell(6.5, 6.8, 1.6, 1.0, "skin", bias=0.1)  # ears
+    f.ell(17.5, 6.8, 1.6, 1.0, "skin", bias=-0.2)
+    f.ell(12, 6.4, 4.4, 4.2, "skin")
+    f.ell(12, 9.4, 3.1, 2.1, "muzzle")
+    f.dot(11, 9, "nose", 1)
+    f.dot(13, 9, "nose", 1)
+    f.line(11, 11, 13, 11, "ring", 3)
+    f.dot(12, 12, "ring", 2)
+    f.poly([(8, 4), (9, 6), (5, 5), (2, 0), (4, 1)], "horn")
+    f.poly([(16, 4), (15, 6), (19, 5), (22, 0), (20, 1)], "horn", bias=-0.2)
+    f.dot(10, 6, "eye", 2)
+    f.dot(14, 6, "eye", 2)
+    f.line(21, 22, 21, 4, "pole", 2)  # iron fork
+    f.line(19, 6, 19, 2, "steel", 3)
+    f.line(23, 6, 23, 2, "steel", 2)
+    f.box(19, 6, 23, 6, "steel", flat=3)
+    f.dot(21, 1, "steel", 4)
+
+
 def dog(f):
     """Black dog of the underworld with red eyes."""
     quadruped(f, body="fur")
@@ -562,6 +608,12 @@ ACTORS = {
                                            tassel=(214, 40, 50), rope=(206, 40, 44), eye=flat((40, 60, 160)))),
     "yeomra": (yeomra, "breath", 12, dict(robe=(176, 34, 36), skin=SKIN, beard=(30, 26, 34), tablet=(240, 232, 206),
                                          crown=(40, 34, 44), bead=(240, 200, 70), eye=flat((255, 220, 90)))),
+    "eodukssini": (eodukssini, "breath", 12, dict(body=(58, 48, 86), wisp=(120, 104, 160),
+                                                 eye=flat((250, 244, 200)), mouth=flat((20, 12, 26)))),
+    "udu_nachal": (udu, "breath", 13, dict(armor=(50, 44, 56), trim=(214, 170, 70), skin=(128, 70, 52),
+                                           hand=(128, 70, 52), muzzle=(196, 150, 120), horn=(236, 226, 196),
+                                           ring=(244, 204, 80), pole=(96, 70, 50), steel=(196, 200, 212),
+                                           eye=flat((255, 90, 60)))),
     "jeoseung_dog": (dog, "breath", 12, dict(fur=(56, 54, 66), eye=flat((255, 60, 60)))),
     "gumiho": (gumiho, "breath", 12, dict(fur=(236, 176, 82), tip=(250, 246, 236), eye=flat((50, 20, 20)))),
     "jangsanbeom": (jangsanbeom, "breath", 12, dict(fur=(226, 226, 230), mane=(246, 246, 250),

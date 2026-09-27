@@ -12,6 +12,13 @@ extends Actor
 ## RANGED attacks still reach any tile in range.
 ##
 ## Monsters do not see traps either, so any move can spring one (see TrapSystem).
+##
+## Some bosses have a signature move (MonsterData.boss_move), after Shattered
+## Pixel Dungeon's bosses: they spend a turn winding up - the tiles it will
+## strike glow red - and let it go on their next turn, so a player who reads
+## the warning can step out of the way. "slam" hits every tile around the boss;
+## "charge" rushes down a straight line and leaves the boss dazed if it ends
+## in a wall.
 
 ## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
 const SUMMON_TIER_DROP: int = 6
@@ -20,11 +27,28 @@ const SUMMON_TIER_DROP: int = 6
 ## more equipment slots. With tests/BalanceSim.tscn the bot won 19 of 48 runs at
 ## 1.12 (1.0: 17/24, 1.10: 10/24, 1.15: 6/24, 1.25: 2/24).
 const ATTACK_SCALE: float = 1.12
+## Longest rush of a charge, in tiles; a charge starts from 2 tiles away or more.
+const CHARGE_RANGE: int = 6
+## Turns a charger stays dazed after running into a wall.
+const CRASH_TURNS: int = 2
+## How much a slammer swells while winding up.
+const SWELL: float = 1.35
+const CHARGE_STEP_TIME: float = 0.04
+## Values above 1 brighten: a wound-up boss glows red even on a dark floor.
+const WINDUP_TINT := Color(1.8, 0.85, 0.8)
+const DAZED_TINT := Color(0.7, 0.7, 0.85)
 
 var data: MonsterData
 var _summoned: bool = false
 ## Standing on ice: this monster loses its next turn.
 var _chilled: bool = false
+## Signature move: wound up and let go next turn; turns until it can be used
+## again; the charge's direction; turns left dazed after a crash.
+var _winding_up: bool = false
+var _move_wait: int = 0
+var _charge_dir := Vector2i.ZERO
+var _dazed: int = 0
+var _marks: DangerMarks
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
@@ -41,6 +65,18 @@ func take_ai_turn() -> void:
 		return
 	if _chilled:
 		_chilled = false
+		return
+	if _dazed > 0:
+		_dazed -= 1
+		if _dazed == 0:
+			sprite.self_modulate = Color.WHITE
+		return
+	if _winding_up:
+		_release_move(player_actor)
+		return
+	if _move_wait > 0:
+		_move_wait -= 1
+	elif _start_move(player_actor):
 		return
 	var dist: int = _chebyshev_distance(grid_pos, player_actor.grid_pos)
 	var beside: bool = _is_beside(player_actor.grid_pos)
@@ -76,6 +112,174 @@ func take_ai_turn() -> void:
 ## Ice under a monster costs it its next turn.
 func chill() -> void:
 	_chilled = true
+
+## Tiles the move being wound up will strike (none when not winding up). A
+## charge's line is drawn to where it would stop at a wall; anyone standing in
+## it stops it sooner.
+func danger_tiles() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if not _winding_up:
+		return out
+	match data.boss_move:
+		"slam":
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var pos := grid_pos + Vector2i(dx, dy)
+					if pos != grid_pos and DungeonState.is_walkable(pos):
+						out.append(pos)
+		"charge":
+			var pos := grid_pos
+			for i in range(CHARGE_RANGE):
+				pos += _charge_dir
+				if not DungeonState.is_walkable(pos):
+					break
+				out.append(pos)
+	return out
+
+func is_winding_up() -> bool:
+	return _winding_up
+
+func is_dazed() -> bool:
+	return _dazed > 0
+
+## Winds up the signature move if the player is where it would land.
+func _start_move(target) -> bool:
+	if data.boss_move.is_empty() or target.has_status("invisible"):
+		return false
+	match data.boss_move:
+		"slam":
+			if _chebyshev_distance(grid_pos, target.grid_pos) > 1:
+				return false
+			MessageBus.log_message("%s 몸을 잔뜩 부풀린다! 곁에서 물러나라!" % Josa.i_ga(display_name))
+		"charge":
+			var dir: Vector2i = _clear_line_to(target.grid_pos)
+			if dir == Vector2i.ZERO:
+				return false
+			_charge_dir = dir
+			_face(dir.x)
+			MessageBus.log_message("%s 뿔을 낮추고 콧김을 내뿜는다! 길목에서 비켜라!" % Josa.i_ga(display_name))
+		_:
+			return false
+	_winding_up = true
+	_show_windup()
+	return true
+
+## The direction of a charge at pos: straight up, down, left or right, 2 to
+## CHARGE_RANGE tiles away, in sight and with nothing in between. ZERO if not.
+func _clear_line_to(pos: Vector2i) -> Vector2i:
+	var delta: Vector2i = pos - grid_pos
+	if delta.x != 0 and delta.y != 0:
+		return Vector2i.ZERO
+	var dist: int = absi(delta.x) + absi(delta.y)
+	if dist < 2 or dist > CHARGE_RANGE or not DungeonState.has_line_of_sight(grid_pos, pos):
+		return Vector2i.ZERO
+	var dir := Vector2i(signi(delta.x), signi(delta.y))
+	for i in range(1, dist):
+		var between: Vector2i = grid_pos + dir * i
+		if not DungeonState.is_walkable(between) or DungeonState.get_actor_at(between) != null:
+			return Vector2i.ZERO
+	return dir
+
+func _release_move(target) -> void:
+	_winding_up = false
+	_move_wait = data.move_cooldown
+	_end_windup()
+	match data.boss_move:
+		"slam":
+			_slam(target)
+		"charge":
+			_charge(target)
+
+## Strikes every tile around: whoever is still beside it (diagonals too) is hit.
+func _slam(target) -> void:
+	MessageBus.log_message("%s 온몸으로 바닥을 내리찍는다!" % Josa.i_ga(display_name))
+	AudioManager.play("hit_heavy")
+	Fx.slam(self)
+	if _chebyshev_distance(grid_pos, target.grid_pos) <= 1:
+		_heavy_blow(target)
+	else:
+		MessageBus.log_message("간발의 차로 피했다!")
+
+## Rushes down the line it wound up for until something stops it: the player
+## (a heavy blow), another monster, a wall (dazed) or the end of its reach.
+func _charge(target) -> void:
+	MessageBus.log_message("%s 돌진한다!" % Josa.i_ga(display_name))
+	AudioManager.play("hit_heavy")
+	var steps: int = 0
+	var crashed: bool = false
+	var struck = null
+	while steps < CHARGE_RANGE:
+		var next: Vector2i = grid_pos + _charge_dir
+		if not DungeonState.is_walkable(next):
+			crashed = true
+			break
+		var in_way = DungeonState.get_actor_at(next)
+		if in_way != null:
+			if in_way == target:
+				struck = target
+			break
+		if visible:
+			Fx.dust(get_parent(), grid_pos)
+		DungeonState.move_actor(self, grid_pos, next)
+		TrapSystem.trigger(self, next)
+		steps += 1
+	if steps > 1 and _move_tween != null and _move_tween.is_valid():
+		# one long slide rather than a hop per tile
+		_move_tween.kill()
+		_move_tween = create_tween()
+		var end := Vector2(grid_pos * Constants.TILE_SIZE)
+		_move_tween.tween_property(self, "position", end, CHARGE_STEP_TIME * steps)
+	if struck != null:
+		_heavy_blow(struck)
+	elif crashed:
+		_dazed = CRASH_TURNS
+		sprite.self_modulate = DAZED_TINT
+		MessageBus.log_message("%s 벽에 머리를 들이받고 비틀거린다!" % Josa.i_ga(display_name))
+		_show_popup("어질어질", COLOR_MISS)
+		if visible:
+			Fx.shake(Fx.SHAKE_HEAVY)
+	else:
+		MessageBus.log_message("간발의 차로 피했다!")
+
+## The signature move landing: it never misses and hits move_power times as
+## hard as an ordinary blow (armour still counts).
+func _heavy_blow(target) -> void:
+	var raw: int = roundi(randi_range(stats.attack_min, stats.attack_max) * data.move_power)
+	var dmg: int = maxi(1, raw - target.stats.defense)
+	if target is Player:
+		GameState.last_attacker = display_name
+	MessageBus.log_message("%s %d의 큰 피해를 입혔다!" % [Josa.i_ga(display_name), dmg])
+	play_attack(target.grid_pos)
+	target.set_hit_from(grid_pos)
+	target.take_damage(dmg)
+
+## Swells or rears up, tints red, and marks the tiles about to be struck.
+func _show_windup() -> void:
+	_marks = DangerMarks.new()
+	for pos in danger_tiles():
+		_marks.tiles.append(pos - grid_pos)
+	_marks.z_index = Fx.Z
+	add_child(_marks)
+	AudioManager.play("windup")
+	sprite.self_modulate = WINDUP_TINT
+	var ts: float = Constants.TILE_SIZE
+	sprite.pivot_offset = Vector2(ts * 0.5, ts * 0.95)
+	var grow: float = SWELL if data.boss_move == "slam" else 1.1
+	_tween_sprite_scale(Vector2(grow, grow), 0.25)
+
+func _end_windup() -> void:
+	if is_instance_valid(_marks):
+		_marks.queue_free()
+	_marks = null
+	sprite.self_modulate = Color.WHITE
+	_tween_sprite_scale(Vector2.ONE, 0.12)
+
+func _tween_sprite_scale(to: Vector2, time: float) -> void:
+	if not is_inside_tree():
+		sprite.scale = to
+		return
+	var tw := sprite.create_tween()
+	tw.tween_property(sprite, "scale", to, time).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## Bosses smash floor traps instead of falling into them, so a boss fight is
 ## never cut short by a teleport trap.

@@ -18,8 +18,8 @@ func _initialize() -> void:
 	_check(items > 0, "items loaded (%d)" % items)
 	_check(monster_db.monsters.size() > 0, "monsters loaded (%d)" % monster_db.monsters.size())
 	_check(classes > 0, "classes offered on the class screen (%d)" % classes)
-	_check(monster_db.get_boss_for_floor(10) != null, "boss for floor 10")
-	_check(monster_db.get_boss_for_floor(20) != null, "boss for floor 20")
+	for f in [5, 10, 15, 20]:
+		_check(monster_db.get_boss_for_floor(f) != null, "boss for floor %d" % f)
 	_check(not monster_db.get_monsters_for_floor(1).is_empty(), "monsters for floor 1")
 	# the art is looked up by path at run time, so check it made it into the build
 	var sprites = load("res://scripts/core/SpriteLibrary.gd")
@@ -30,6 +30,8 @@ func _initialize() -> void:
 			atlases += 1
 	_check(atlases == 4, "tile atlases load (%d/4)" % atlases)
 	_check(sprites.get_actor_frames("yeomra").size() == 2, "character idle frames load")
+	for boss in ["eodukssini", "udu_nachal"]:
+		_check(sprites.get_actor_frames(boss).size() == 2, "%s frames load" % boss)
 	_check(sprites.get_actor_frames("hwarang_bare").size() == 2, "bare hero bodies load")
 	_check(sprites.get_gear_frames("satgat").size() == 2, "worn-gear layers load")
 	_check(ui.icon("attack") != null, "button icons load")

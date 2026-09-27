@@ -96,6 +96,7 @@ func _run() -> void:
 	await _test_hit_feel()
 	await _test_hazards()
 	await _test_timed_effects()
+	await _test_boss_moves()
 
 func _test_content() -> void:
 	print("[content]")
@@ -103,9 +104,9 @@ func _test_content() -> void:
 	for slot in GameState.EQUIP_SLOTS:
 		var any_for_slot: bool = ItemDatabase.items.values().any(func(it): return it.equip_slot() == slot)
 		check(any_for_slot, "some item fits the %s slot" % slot)
-	check(MonsterDatabase.monsters.size() == 17, "17 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
-	check(MonsterDatabase.get_boss_for_floor(10) != null, "boss on floor 10")
-	check(MonsterDatabase.get_boss_for_floor(20) != null, "boss on floor 20")
+	check(MonsterDatabase.monsters.size() == 19, "19 monsters loaded (got %d)" % MonsterDatabase.monsters.size())
+	for f in [5, 10, 15, 20]:
+		check(MonsterDatabase.get_boss_for_floor(f) != null, "boss on floor %d" % f)
 	for f in range(1, 20):
 		var boss_floor: bool = MonsterDatabase.get_boss_for_floor(f) != null
 		var pool_floor: int = f - 1 if boss_floor else f
@@ -389,12 +390,12 @@ func _test_progression() -> void:
 	for f in range(1, 20):
 		game._load_floor(f)
 		_god_mode()
-		if f == 10:
+		if f % 5 == 0:
 			var mid_boss = _find_boss()
-			check(mid_boss != null, "mid boss present on floor 10")
+			check(mid_boss != null, "mid boss present on floor %d" % f)
 			if mid_boss != null:
 				mid_boss.take_damage(99999)
-			check(not game._ended, "killing the floor-10 boss does not end the game")
+			check(not game._ended, "killing the floor-%d boss does not end the game" % f)
 		DungeonState.move_actor(game.player, game.player.grid_pos, DungeonState.stairs_pos)
 		game._after_player_action()
 		game._on_descend_pressed()
@@ -1535,3 +1536,90 @@ func _test_timed_effects() -> void:
 	check(landed, "it wears off and the player lands")
 	check(ended.any(func(l): return l.contains("내려앉았다")), "wearing off is announced")
 	MessageBus.message_logged.disconnect(log_line)
+
+## A bare w x h room (walls all round) with the player at start and no monsters.
+func _arena(class_id: String, w: int, h: int, start: Vector2i) -> Player:
+	await _new_game(class_id)
+	_clear_monsters()
+	DungeonState.clear()
+	for y in range(h):
+		for x in range(w):
+			DungeonState.grid[Vector2i(x, y)] = DungeonState.Tile.FLOOR
+	game._place_player(start)
+	game._refresh_vision()
+	return game.player
+
+func _test_boss_moves() -> void:
+	print("[boss signature moves]")
+	var p: Player = await _arena("hwarang", 7, 7, Vector2i(3, 2))
+	_god_mode()
+	var goo_data: MonsterData = MonsterDatabase.get_monster("eodukssini")
+	var goo: Monster = game._spawn_monster_at(goo_data, Vector2i(3, 3))
+	game._refresh_vision()
+	var hp: int = p.current_hp
+	goo.take_ai_turn()
+	check(goo.is_winding_up() and p.current_hp == hp,
+		"the floor-5 boss swells up instead of striking at once")
+	var danger: Array[Vector2i] = goo.danger_tiles()
+	check(danger.size() == 8 and danger.has(p.grid_pos), "a slam threatens all 8 tiles around it")
+	check(goo._marks != null and goo._marks.tiles.size() == 8,
+		"the threatened tiles are marked on the map")
+	goo.take_ai_turn()
+	check(p.current_hp < hp and not goo.is_winding_up(),
+		"the slam lands on a player who stays beside it")
+	check(goo._marks == null and goo.danger_tiles().is_empty(), "the marks go once the slam lands")
+	check(goo._move_wait == goo.data.move_cooldown, "the slam then waits out its cooldown")
+	goo.take_ai_turn()
+	check(not goo.is_winding_up(), "between slams it fights normally")
+	goo._move_wait = 0
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(4, 2))
+	goo.take_ai_turn()
+	hp = p.current_hp
+	goo.take_ai_turn()
+	check(p.current_hp < hp, "the slam reaches diagonals too")
+	goo._move_wait = 0
+	goo.take_ai_turn()
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(4, 1))
+	hp = p.current_hp
+	goo.take_ai_turn()
+	check(p.current_hp == hp, "stepping off the marked tiles dodges the slam")
+	goo._move_wait = 0
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(3, 2))
+	p.apply_status("invisible", 5)
+	goo.take_ai_turn()
+	check(not goo.is_winding_up(), "it cannot aim at an invisible player")
+
+	p = await _arena("hwarang", 7, 5, Vector2i(5, 2))
+	_god_mode()
+	var ox: Monster = game._spawn_monster_at(MonsterDatabase.get_monster("udu_nachal"), Vector2i(1, 2))
+	game._refresh_vision()
+	hp = p.current_hp
+	ox.take_ai_turn()
+	check(ox.is_winding_up() and ox.grid_pos == Vector2i(1, 2),
+		"the floor-15 boss rears up when the player is in line")
+	danger = ox.danger_tiles()
+	check(danger.size() == 5 and danger.has(p.grid_pos), "the whole line up to the wall is marked")
+	ox.take_ai_turn()
+	check(ox.grid_pos == Vector2i(4, 2) and p.current_hp < hp,
+		"the charge rushes up to the player and hits hard")
+	ox._move_wait = 0
+	DungeonState.move_actor(ox, ox.grid_pos, Vector2i(1, 2))
+	ox.take_ai_turn()
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(5, 3))
+	hp = p.current_hp
+	ox.take_ai_turn()
+	check(p.current_hp == hp and ox.grid_pos == Vector2i(6, 2),
+		"a sidestep dodges; the charge runs on to the wall")
+	check(ox.is_dazed(), "running into the wall leaves it dazed")
+	ox.take_ai_turn()
+	ox.take_ai_turn()
+	check(ox.grid_pos == Vector2i(6, 2) and not ox.is_dazed(), "dazed for two turns, then it recovers")
+	ox._move_wait = 0
+	DungeonState.move_actor(ox, ox.grid_pos, Vector2i(1, 1))
+	ox.take_ai_turn()
+	check(not ox.is_winding_up(), "no charge when the player is not in a straight line")
+	ox._move_wait = 0
+	DungeonState.move_actor(ox, ox.grid_pos, Vector2i(1, 3))
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(2, 3))
+	ox.take_ai_turn()
+	check(not ox.is_winding_up(), "no charge from right beside the player")
