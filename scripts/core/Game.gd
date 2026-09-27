@@ -75,6 +75,7 @@ func _ready() -> void:
 	GameState.gold_changed.connect(hud.set_gold)
 	GameState.level_changed.connect(hud.set_level)
 	GameState.skill_changed.connect(_update_skill_button)
+	TurnManager.turn_ended.connect(_refresh_status_hud)
 	MessageBus.message_logged.connect(message_log.add_message)
 
 	var class_id: String = str(save_data.class_id) if continuing else GameState.selected_class_id
@@ -87,6 +88,7 @@ func _ready() -> void:
 	hud.set_hp(player.current_hp, player.stats.max_hp)
 	_last_hp = player.current_hp
 	_update_skill_button()
+	_refresh_status_hud()
 	if not SettingsManager.tutorial_seen:
 		help_panel.show_panel()
 	if continuing and bool(save_data.get("dead", false)):
@@ -139,7 +141,7 @@ func _spawn_player(class_id: String, save_data: Dictionary) -> void:
 	player.setup(class_data.stats.duplicate(), class_data.color, class_data.glyph, class_data.display_name, class_data.id)
 	player.hp_changed.connect(hud.set_hp)
 	player.hp_changed.connect(_on_player_hp_changed)
-	player.status_changed.connect(func(): hud.set_status(player.status_text()))
+	player.status_changed.connect(_refresh_status_hud)
 	if IAPManager.supporter:
 		player.visual.color = SUPPORTER_GLOW
 
@@ -565,6 +567,12 @@ func _floor_boss() -> Monster:
 		if is_instance_valid(m) and m.is_alive and m.data.is_boss:
 			return m
 	return null
+
+## Timed conditions and the hunger meter; hunger moves every turn.
+func _refresh_status_hud() -> void:
+	if is_instance_valid(player):
+		hud.set_status(player.status_text())
+	hud.set_hunger(GameState.hunger)
 
 func _update_skill_button() -> void:
 	var c: CharacterClassData = GameState.player_class
