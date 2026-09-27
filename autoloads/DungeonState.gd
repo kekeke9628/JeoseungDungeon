@@ -25,6 +25,8 @@ var gold_at: Dictionary = {}       # Vector2i -> int
 var explored: Dictionary = {}      # Vector2i -> true, ever seen this floor
 var visible_tiles: Dictionary = {} # Vector2i -> true, currently in sight
 var spotted_traps: Dictionary = {} # Vector2i -> true, armed traps the player has noticed
+## Where the last field of view was cast from (the player's tile).
+var fov_origin: Vector2i = Vector2i.ZERO
 
 func clear() -> void:
 	grid.clear()
@@ -125,6 +127,7 @@ func reveal_all() -> void:
 	changed.emit()
 
 func compute_fov(origin: Vector2i, radius: int) -> void:
+	fov_origin = origin
 	visible_tiles.clear()
 	visible_tiles[origin] = true
 	explored[origin] = true
