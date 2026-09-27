@@ -4,7 +4,7 @@ extends Node2D
 ## a sword slash, a lightning bolt, or a column of light. Like PixelBurst it
 ## keeps its own random numbers away from the game's.
 
-enum Kind { RING, SLASH, BOLT, PILLAR }
+enum Kind { RING, SLASH, BOLT, PILLAR, SPARK }
 
 var kind: Kind = Kind.RING
 var color: Color = Color.WHITE
@@ -54,6 +54,14 @@ func _draw() -> void:
 			if int(_t * 30.0) % 3 != 2:
 				draw_polyline(_bolt, Color(c.r, c.g, c.b, c.a * 0.5), width * 3.0)
 				draw_polyline(_bolt, Color(1, 1, 1, c.a), width)
+		Kind.SPARK:
+			# a four-point star that shrinks away
+			var r: float = radius * (1.0 - k * 0.6)
+			draw_line(Vector2(-r, 0), Vector2(r, 0), c, width)
+			draw_line(Vector2(0, -r), Vector2(0, r), c, width)
+			var d: float = r * 0.45
+			draw_line(Vector2(-d, -d), Vector2(d, d), c, width * 0.6)
+			draw_line(Vector2(-d, d), Vector2(d, -d), c, width * 0.6)
 		Kind.PILLAR:
 			var h: float = 180.0 * (0.4 + k)
 			draw_rect(Rect2(-radius, -h, radius * 2.0, h), Color(c.r, c.g, c.b, c.a * 0.35))

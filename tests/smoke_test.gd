@@ -20,6 +20,7 @@ func _ready() -> void:
 	seed(12345)
 	SettingsManager.settings_path = "user://test_settings.cfg"
 	SettingsManager.tutorial_seen = true
+	Fx.hit_stop_enabled = false  # frames only pass when a test waits
 	SaveManager.save_path = "user://test_save.json"
 	IAPManager.store_path = "user://test_purchases.json"
 	StatsManager.stats_path = "user://test_stats.json"
@@ -91,6 +92,7 @@ func _run() -> void:
 	await _test_stairs_on_request()
 	await _test_hunger()
 	await _test_graphics()
+	await _test_hit_feel()
 
 func _test_content() -> void:
 	print("[content]")
@@ -1099,9 +1101,17 @@ func _test_attack_and_motion() -> void:
 	var far := Vector2(4, 4) * Constants.TILE_SIZE
 	check(p.position == far, "a teleport snaps straight there")
 	p.play_attack(Vector2i(5, 4))
-	await get_tree().process_frame
-	await get_tree().process_frame
-	check(p.body.position.x > 0.0, "an attack leans toward the target")
+	# sample every frame of the motion: back first, then forward
+	var first_back: int = -1
+	var first_forward: int = -1
+	for i in range(40):
+		await get_tree().create_timer(0.008).timeout
+		if p.body.position.x < 0.0 and first_back < 0:
+			first_back = i
+		if p.body.position.x > 0.0 and first_forward < 0:
+			first_forward = i
+	check(first_back >= 0, "an attack first winds up away from the target")
+	check(first_forward > first_back, "then lunges toward it")
 	await get_tree().create_timer(0.3).timeout
 	check(p.body.position == Vector2.ZERO, "and comes back to rest")
 
@@ -1299,3 +1309,52 @@ func _test_graphics() -> void:
 			break
 	check(dark.x >= 0 and img.get_pixelv(dark) == Color(0, 0, 0), "unexplored ground stays black")
 	check(here.v > 0.8, "the player's own tile is brightly lit")
+
+func _test_hit_feel() -> void:
+	print("[hit feel]")
+	await _new_game("hwarang")
+	_clear_monsters()
+	var p: Player = game.player
+	DungeonState.clear()
+	for x in range(5):
+		DungeonState.grid[Vector2i(x, 0)] = DungeonState.Tile.FLOOR
+	game._place_player(Vector2i(1, 0))
+	var goblin_data: MonsterData = MonsterDatabase.get_monster("dokkaebi")
+	var goblin: Monster = game._spawn_monster_at(goblin_data, Vector2i(2, 0))
+	goblin.stats.max_hp = 1000
+	goblin.current_hp = 1000
+	game._refresh_vision()
+	goblin.set_hit_from(p.grid_pos)
+	goblin.take_damage(1)
+	await get_tree().create_timer(0.02).timeout
+	check(goblin.body.position.x > 0.0, "a blow knocks the target back, away from the attacker")
+	var labels: Array = game.world.get_children().filter(func(c): return c is Label)
+	var small: Label = labels.back()
+	goblin.take_damage(400)
+	labels = game.world.get_children().filter(func(c): return c is Label)
+	var big: Label = labels.back()
+	var small_size: int = small.get_theme_font_size("font_size")
+	var big_size: int = big.get_theme_font_size("font_size")
+	check(big_size > small_size, "a heavy blow shows a bigger number")
+	goblin.dodge(p.grid_pos)
+	labels = game.world.get_children().filter(func(c): return c is Label)
+	check((labels.back() as Label).text == "빗나감", "a miss says so over the one who dodged")
+	var sparks: int = game.world.get_children().filter(func(c): return c is FxShape).size()
+	goblin.set_hit_from(p.grid_pos)
+	goblin.take_damage(1)
+	var after: int = game.world.get_children().filter(func(c): return c is FxShape).size()
+	check(after == sparks + 1, "a blow throws a spark where it lands")
+	Fx.hit_stop_enabled = true
+	goblin.set_hit_from(p.grid_pos)
+	goblin.take_damage(1)
+	check(Engine.time_scale < 1.0, "a blow freezes the picture for a moment")
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	check(Engine.time_scale == 1.0, "and the picture runs on again")
+	Fx.hit_stop_enabled = false
+	goblin.take_damage(1)
+	check(Engine.time_scale == 1.0, "poison-like damage (no attacker) does not freeze")
+	seed(99)
+	var expected: int = randi()
+	seed(99)
+	Fx.shake(Fx.SHAKE_HEAVY)
+	check(randi() == expected, "the camera shake does not use the game's dice")

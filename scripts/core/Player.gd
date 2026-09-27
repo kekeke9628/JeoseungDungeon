@@ -33,7 +33,10 @@ func try_move(dir: Vector2i) -> bool:
 		var result := CombatSystem.roll_attack(self, blocking_actor)
 		_log_attack_result(result, blocking_actor)
 		if result.hit:
+			blocking_actor.set_hit_from(grid_pos)
 			blocking_actor.take_damage(result.damage)
+		else:
+			blocking_actor.dodge(grid_pos)
 		TurnManager.end_player_turn()
 		return true
 	if DungeonState.is_walkable(target):
