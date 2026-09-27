@@ -21,8 +21,9 @@ static func _load(path: String) -> Texture2D:
 static func get_actor(id: String) -> Texture2D:
 	return null if id.is_empty() else _load(ACTOR_DIR + id + ".png")
 
-static func get_tile(name: String) -> Texture2D:
-	return _load(TILE_DIR + name + ".png")
+## The tile atlas of a depth band (see TileAtlas).
+static func get_tile_atlas(band: String) -> Texture2D:
+	return _load(TILE_DIR + band + ".png")
 
 static func get_item(id: String) -> Texture2D:
 	return _load(ITEM_DIR + id + ".png")

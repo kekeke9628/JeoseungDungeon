@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cgwb4j6p1nwj7"
-path="res://.godot/imported/well.png-1da095e42952c7d6efe475df4dc95b98.ctex"
+uid="uid://w02toyxykpk"
+path="res://.godot/imported/palace.png-6ff90a4246930b2e7d0436a72e632f4c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/tiles/well.png"
-dest_files=["res://.godot/imported/well.png-1da095e42952c7d6efe475df4dc95b98.ctex"]
+source_file="res://assets/sprites/tiles/palace.png"
+dest_files=["res://.godot/imported/palace.png-6ff90a4246930b2e7d0436a72e632f4c.ctex"]
 
 [params]
 

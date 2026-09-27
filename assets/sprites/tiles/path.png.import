@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dbtf4m8et51rt"
-path="res://.godot/imported/altar.png-60691d6c2d6dddca58ae1dd340d2bd54.ctex"
+uid="uid://cjvrv5am0wd0q"
+path="res://.godot/imported/path.png-2877d75462095b331898c4d979de0ab2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/tiles/altar.png"
-dest_files=["res://.godot/imported/altar.png-60691d6c2d6dddca58ae1dd340d2bd54.ctex"]
+source_file="res://assets/sprites/tiles/path.png"
+dest_files=["res://.godot/imported/path.png-2877d75462095b331898c4d979de0ab2.ctex"]
 
 [params]
 

@@ -1,6 +1,7 @@
 extends Node
 ## Builds a populated gameplay scene for screenshots (store listing / visual checks).
 ## Run: Godot --path . res://tests/ShotScene.tscn --write-movie out.png --fixed-fps 30 --quit-after 40
+##   (after -- : --floor=N picks the floor, --features / --inventory add extras)
 ## Uses throwaway settings/save paths so the player's real data is untouched.
 
 func _ready() -> void:
@@ -15,7 +16,11 @@ func _ready() -> void:
 	var game: Node2D = load("res://scenes/Game.tscn").instantiate()
 	add_child(game)
 	await get_tree().process_frame
-	game._load_floor(7)
+	var floor_num: int = 7
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--floor="):
+			floor_num = int(arg.trim_prefix("--floor="))
+	game._load_floor(floor_num)
 	var p = game.player
 	var free: Array[Vector2i] = []
 	for pos in DungeonState.visible_tiles.keys():

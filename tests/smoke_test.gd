@@ -772,7 +772,14 @@ func _test_floor_theme() -> void:
 	check(FloorTheme.band_name(1) == "저승길" and FloorTheme.band_name(5) == "저승길", "floors 1-5 are the first band")
 	check(FloorTheme.band_name(6) == "황천강" and FloorTheme.band_name(10) == "황천강", "floors 6-10 are the second band")
 	check(FloorTheme.band_name(20) == "염라전", "floor 20 is the last band")
-	check(FloorTheme.tint(1) != FloorTheme.tint(6) and FloorTheme.tint(6) != FloorTheme.tint(11), "bands have distinct tints")
+	check(TileAtlas.BANDS.size() == FloorTheme.NAMES.size(), "every band has its own tile set")
+	var atlases_ok: bool = true
+	for band in TileAtlas.BANDS:
+		var atlas: Texture2D = SpriteLibrary.get_tile_atlas(band)
+		var rows: int = ceili(TileAtlas.INDEX.size() / float(TileAtlas.COLS))
+		var want := Vector2(TileAtlas.COLS, rows) * TileAtlas.CELL
+		atlases_ok = atlases_ok and atlas != null and atlas.get_size() == want
+	check(atlases_ok, "each band atlas matches the TileAtlas layout")
 	check(FloorTheme.band_name(99) == "염라전" and FloorTheme.band_name(0) == "저승길", "out-of-range floors are clamped")
 
 func _test_features() -> void:

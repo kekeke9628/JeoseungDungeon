@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1jn5n25ajycs"
-path="res://.godot/imported/stairs.png-02e007c8a66aaea6b4944cd5e34cb6d5.ctex"
+uid="uid://d2jd62ouxwqnm"
+path="res://.godot/imported/river.png-f38045606719a22398e5f82ec9772673.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/tiles/stairs.png"
-dest_files=["res://.godot/imported/stairs.png-02e007c8a66aaea6b4944cd5e34cb6d5.ctex"]
+source_file="res://assets/sprites/tiles/river.png"
+dest_files=["res://.godot/imported/river.png-f38045606719a22398e5f82ec9772673.ctex"]
 
 [params]
 
