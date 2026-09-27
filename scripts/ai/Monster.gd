@@ -18,7 +18,8 @@ extends Actor
 ## strike glow red - and let it go on their next turn, so a player who reads
 ## the warning can step out of the way. "slam" hits every tile around the boss;
 ## "charge" rushes down a straight line and leaves the boss dazed if it ends
-## in a wall.
+## in a wall. Below MonsterData.enrage_fraction of its HP a boss is enraged
+## for the rest of the fight, like the bosses there at half health.
 
 ## Summoned minions come from a much shallower tier so they pressure, not overwhelm.
 const SUMMON_TIER_DROP: int = 6
@@ -37,6 +38,9 @@ const CHARGE_STEP_TIME: float = 0.04
 ## Values above 1 brighten: a wound-up boss glows red even on a dark floor.
 const WINDUP_TINT := Color(1.8, 0.85, 0.8)
 const DAZED_TINT := Color(0.7, 0.7, 0.85)
+## Enraged: blows land this much harder, and the boss stays tinted red.
+const ENRAGE_ATTACK: float = 1.25
+const ENRAGED_TINT := Color(1.3, 0.75, 0.75)
 
 var data: MonsterData
 var _summoned: bool = false
@@ -49,6 +53,7 @@ var _move_wait: int = 0
 var _charge_dir := Vector2i.ZERO
 var _dazed: int = 0
 var _marks: DangerMarks
+var _enraged: bool = false
 
 func setup_from_data(p_data: MonsterData) -> void:
 	data = p_data
@@ -182,7 +187,7 @@ func _clear_line_to(pos: Vector2i) -> Vector2i:
 
 func _release_move(target) -> void:
 	_winding_up = false
-	_move_wait = data.move_cooldown
+	_move_wait = maxi(1, data.move_cooldown - 1) if _enraged else data.move_cooldown
 	_end_windup()
 	match data.boss_move:
 		"slam":
@@ -232,7 +237,7 @@ func _charge(target) -> void:
 	if struck != null:
 		_heavy_blow(struck)
 	elif crashed:
-		_dazed = CRASH_TURNS
+		_dazed = 1 if _enraged else CRASH_TURNS
 		sprite.self_modulate = DAZED_TINT
 		MessageBus.log_message("%s 벽에 머리를 들이받고 비틀거린다!" % Josa.i_ga(display_name))
 		_show_popup("어질어질", COLOR_MISS)
@@ -291,11 +296,32 @@ func ignores_traps() -> bool:
 func has_summoned() -> bool:
 	return _summoned
 
-## Puts a reloaded monster back the way it was saved.
+## Puts a reloaded monster back the way it was saved (an enraged boss comes
+## back enraged: that follows from its HP).
 func restore_state(hp: int, summoned: bool) -> void:
 	current_hp = clampi(hp, 1, stats.max_hp)
 	_summoned = summoned
 	_update_hp_bar()
+	if _should_enrage():
+		_enrage(false)
+
+func is_enraged() -> bool:
+	return _enraged
+
+func _should_enrage() -> bool:
+	return not _enraged and data.enrage_fraction > 0.0 \
+		and float(current_hp) / float(stats.max_hp) <= data.enrage_fraction
+
+func _enrage(announce: bool) -> void:
+	_enraged = true
+	stats.attack_min = roundi(stats.attack_min * ENRAGE_ATTACK)
+	stats.attack_max = roundi(stats.attack_max * ENRAGE_ATTACK)
+	sprite.modulate = ENRAGED_TINT
+	if announce:
+		MessageBus.log_message("%s 분노했다! 더욱 사나워진다!" % Josa.i_ga(display_name))
+		AudioManager.play("windup")
+		if visible:
+			Fx.shake(Fx.SHAKE_LIGHT)
 
 func die() -> void:
 	TurnManager.unregister_monster(self)
@@ -384,6 +410,8 @@ func _try_special(target) -> void:
 
 func take_damage(amount: int) -> void:
 	super.take_damage(amount)
+	if is_alive and _should_enrage():
+		_enrage(true)
 	if is_alive and not _summoned and data.summon_fraction > 0.0 			and float(current_hp) / float(stats.max_hp) <= data.summon_fraction:
 		_summoned = true
 		_summon_minions()

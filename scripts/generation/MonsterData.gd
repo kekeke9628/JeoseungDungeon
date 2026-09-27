@@ -39,3 +39,7 @@ enum AIType { WANDER, AGGRESSIVE, RANGED, AMBUSH }
 @export var move_cooldown: int = 3
 ## How much harder the signature move lands than an ordinary blow.
 @export var move_power: float = 2.0
+## Below this share of its HP a boss is enraged (0 = never): its blows land
+## harder, its signature move comes round sooner and a crash dazes it only
+## briefly. See Monster.
+@export var enrage_fraction: float = 0.0

@@ -5,21 +5,21 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 80
+max_hp = 95
 attack_min = 4
 attack_max = 7
-defense = 1
-accuracy = 88
+defense = 2
+accuracy = 90
 evasion = 5
 
 [resource]
 script = ExtResource("1")
 id = "eodukssini"
 display_name = "어둑시니"
-description = "올려다볼수록 커지는 어둠. 저승길 끝에서 몸을 부풀려 덮쳐 온다."
+description = "올려다볼수록 커지는 어둠. 몸을 부풀려 덮치고, 닿기만 해도 독기가 스민다."
 stats = SubResource("Resource_stats")
 ai_type = 1
-xp_reward = 60
+xp_reward = 80
 min_floor = 5
 max_floor = 5
 color = Color(0.23, 0.19, 0.34, 1)
@@ -29,10 +29,11 @@ is_boss = true
 loot_item_ids = Array[String](["soul_blade", "elixir"])
 loot_chance = 1.0
 detect_radius = 12
-special = ""
-special_chance = 0.0
+special = "poison"
+special_chance = 0.3
 summon_fraction = 0.4
 summon_count = 2
 boss_move = "slam"
 move_cooldown = 3
-move_power = 2.5
+move_power = 3.0
+enrage_fraction = 0.5

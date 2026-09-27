@@ -1623,3 +1623,23 @@ func _test_boss_moves() -> void:
 	DungeonState.move_actor(p, p.grid_pos, Vector2i(2, 3))
 	ox.take_ai_turn()
 	check(not ox.is_winding_up(), "no charge from right beside the player")
+
+	var calm_max: int = ox.stats.attack_max
+	ox.take_damage(ox.current_hp - int(ox.stats.max_hp * 0.55))
+	check(not ox.is_enraged(), "a boss is not enraged above half health")
+	ox.take_damage(int(ox.stats.max_hp * 0.1))
+	check(ox.is_enraged() and ox.stats.attack_max > calm_max,
+		"below half health it is enraged and hits harder")
+	ox._move_wait = 0
+	DungeonState.move_actor(ox, ox.grid_pos, Vector2i(1, 2))
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(5, 2))
+	ox.take_ai_turn()
+	DungeonState.move_actor(p, p.grid_pos, Vector2i(5, 3))
+	ox.take_ai_turn()
+	check(ox._dazed == 1 and ox._move_wait == ox.data.move_cooldown - 1,
+		"enraged, a crash dazes it only one turn and its charge comes round sooner")
+	var again: Monster = game._spawn_monster_at(ox.data, Vector2i(3, 0))
+	var fresh_max: int = again.stats.attack_max
+	again.restore_state(int(again.stats.max_hp * 0.3), true)
+	check(again.is_enraged() and again.stats.attack_max > fresh_max,
+		"a reloaded boss below half health is enraged")

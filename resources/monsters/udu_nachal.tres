@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="Resource_stats"]
 script = ExtResource("2")
-max_hp = 170
+max_hp = 180
 attack_min = 10
 attack_max = 15
 defense = 5
@@ -19,7 +19,7 @@ display_name = "우두나찰"
 description = "소의 머리를 한 지옥문의 옥졸 우두머리. 뿔을 낮추면 곧장 들이받는다."
 stats = SubResource("Resource_stats")
 ai_type = 1
-xp_reward = 280
+xp_reward = 320
 min_floor = 15
 max_floor = 15
 color = Color(0.5, 0.27, 0.2, 1)
@@ -28,10 +28,11 @@ is_boss = true
 loot_item_ids = Array[String](["geum_garakji", "unhye", "elixir"])
 loot_chance = 1.0
 detect_radius = 20
-special = ""
-special_chance = 0.0
+special = "stun"
+special_chance = 0.1
 summon_fraction = 0.4
 summon_count = 2
 boss_move = "charge"
 move_cooldown = 3
-move_power = 2.0
+move_power = 2.5
+enrage_fraction = 0.5
